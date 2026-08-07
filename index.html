@@ -1986,18 +1986,55 @@
   }
 
   // Fetch all sheets in parallel and build rosters
+  // Safe fetch: returns [] on error so one bad sheet doesn't break the whole flow
+  async function safeFetchSheet(sheetName, label) {
+    try {
+      const result = await fetchSheetValues(sheetName + '!A:Z');
+      return { ok: true, data: result, label: label, sheet: sheetName };
+    } catch (err) {
+      console.warn('[standalone-data] Sheet "' + sheetName + '" (' + label + ') failed:', err && err.message ? err.message : err);
+      return { ok: false, data: [], label: label, sheet: sheetName, error: err };
+    }
+  }
+
   async function fetchStandaloneData(startDate, endDate) {
-    console.log('[standalone-data] Fetching 7 sheets from spreadsheet', SPREADSHEET_ID);
+    console.log('[standalone-data] Fetching sheets from spreadsheet', SPREADSHEET_ID);
     console.log('[standalone-data] Date range:', startDate, 'to', endDate);
-    const [regValues, supportValues, ccValues, pCountryValues, metricsValues, ppMetricsValues, goalsValues] = await Promise.all([
-      fetchSheetValues(SHEET_REGISTRATION + '!A:Z'),
-      fetchSheetValues(SHEET_SUPPORT + '!A:Z'),
-      fetchSheetValues(SHEET_CC + '!A:Z'),
-      fetchSheetValues(SHEET_PCOUNTRY + '!A:Z'),
-      fetchSheetValues(SHEET_METRICS + '!A:Z'),
-      fetchSheetValues(SHEET_PP_METRICS + '!A:Z'),
-      fetchSheetValues(SHEET_GOALS + '!A:Z'),
+
+    // Required sheets — these must succeed
+    const required = await Promise.all([
+      safeFetchSheet(SHEET_REGISTRATION, 'registration'),
+      safeFetchSheet(SHEET_SUPPORT, 'support'),
+      safeFetchSheet(SHEET_CC, 'customerCare'),
+      safeFetchSheet(SHEET_PCOUNTRY, 'pCountry'),
+      safeFetchSheet(SHEET_METRICS, 'metrics'),
+      safeFetchSheet(SHEET_PP_METRICS, 'ppMetrics'),
     ]);
+
+    // Goals is OPTIONAL — try multiple candidate names
+    let goalsResult = { ok: false, data: [], label: 'goals', sheet: SHEET_GOALS };
+    const goalsCandidates = ['goals', 'Goals', 'GOALS', 'manual_goals', 'manual goals', 'Manual Goals', 'Manual_Goals'];
+    for (const candidate of goalsCandidates) {
+      try {
+        const r = await safeFetchSheet(candidate, 'goals');
+        if (r.ok && r.data && r.data.length > 0) {
+          console.log('[standalone-data] Goals sheet found as "' + candidate + '" with ' + r.data.length + ' rows');
+          goalsResult = r;
+          break;
+        }
+      } catch (e) { /* try next */ }
+    }
+    if (!goalsResult.ok) {
+      console.warn('[standalone-data] No goals sheet found (tried: ' + goalsCandidates.join(', ') + '). Standings will use pCountry points only.');
+    }
+
+    const regValues = required[0].data;
+    const supportValues = required[1].data;
+    const ccValues = required[2].data;
+    const pCountryValues = required[3].data;
+    const metricsValues = required[4].data;
+    const ppMetricsValues = required[5].data;
+    const goalsValues = goalsResult.data;
     const counts = {
       registration: (regValues || []).length,
       support: (supportValues || []).length,
