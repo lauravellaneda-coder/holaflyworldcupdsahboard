@@ -5203,46 +5203,6 @@
       </tr>`;
     });
 
-    // Modal de celebración: muestra qué país+dept ganó cada semana con sus goles
-    // Solo se muestra una vez por sesión (cuando hay nuevas semanas finalizadas)
-    const finishedWeeksWithGoals = [];
-    teamStats && Object.values(teamStats).forEach(t => {
-      if (t.goalHistory && t.goalHistory.length > 0) {
-        t.goalHistory.forEach(h => {
-          finishedWeeksWithGoals.push({
-            week: h.week,
-            country: t.country,
-            flag: t.flag,
-            dept: t.dept,
-            goals: h.goals,
-            perf: h.perf
-          });
-        });
-      }
-    });
-    if (finishedWeeksWithGoals.length > 0 && !window.__celebrationModalShown) {
-      window.__celebrationModalShown = true;
-      // Group by week and rank within each week (1st place = 5 goals, 2nd = 3, 3rd = 1)
-      const byWeek = {};
-      finishedWeeksWithGoals.forEach(g => {
-        if (!byWeek[g.week]) byWeek[g.week] = [];
-        byWeek[g.week].push(g);
-      });
-      const orderedLines = [];
-      Object.keys(byWeek).sort().forEach(week => {
-        const entries = byWeek[week].sort((a, b) => b.perf - a.perf);
-        entries.forEach((g, idx) => {
-          const medals = ['🥇', '🥈', '🥉'];
-          const medal = medals[idx] || '⚽';
-          orderedLines.push(`<div style="padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.08);">${medal} <strong>Week ${g.week}</strong> · ${g.flag} ${g.country} <em>${g.dept}</em> · +${g.goals} goals <span style="color: var(--muted); font-size: 12px;">(${g.perf.toFixed(1)}%)</span></div>`);
-        });
-      });
-      showCustomAlert(
-        `🏆 <strong>Tournament Goals Awarded</strong>\n\n${orderedLines.join('')}`,
-        '🏆'
-      );
-    }
-
     // Re-apply active filters to redraw the tables with the new combined data
     filterSupportTeam();
     filterCCTeam();
