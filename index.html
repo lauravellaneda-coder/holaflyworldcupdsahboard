@@ -2104,6 +2104,19 @@
     const ppMetricsRaw = rowsToObjects(ppMetricsValues);
     const goalsRaw = rowsToObjects(goalsValues);
 
+    // Cache raw unfiltered sheets so updateWeeklyStandingsAndRender can compute
+    // per-week goals without re-fetching or falling back to MOCK.
+    window.__rawSheetsCache = {
+      support: supportRaw,
+      customerCare: ccRaw,
+      ppMetrics: ppMetricsRaw,
+      goals: goalsRaw,
+      pCountry: pCountry,
+      metrics: metrics,
+      registration: registration,
+      fetchedAt: Date.now()
+    };
+
     console.log('[standalone-data] After rowsToObjects:', JSON.stringify({
       registration: registration.length,
       support: supportRaw.length,
@@ -4379,11 +4392,12 @@
               .catch(err => console.error(`Error fetching HTTP weekly data:`, err));
           });
           await Promise.all(fetchPromises);
-        } else {
-          weeksToFetch.forEach(week => {
-            weeklyDataCache[`${week.start}_${week.end}`] = MOCK_DATA;
-          });
-        }
+      } else {
+        // No GAS and no Apps Script URL configured — do NOT fall back to MOCK.
+        // The new updateWeeklyStandingsAndRender builds weeklyResults from
+        // __rawSheetsCache, so this branch is intentionally a no-op now.
+        console.warn('[weeklyDataCache] No Apps Script or live URL configured — skipping per-week fetch. updateWeeklyStandingsAndRender will use __rawSheetsCache instead.');
+      }
       }
       
       hideLoadingModal();
@@ -4570,24 +4584,162 @@
       }
     }
     
-    // Clear cache when rawData hash changes or if it's a legacy cache missing the hash
-    const currentHash = computeDataHash(rawData);
-    const hasCacheData = Object.keys(weeklyDataCache).length > 0;
-    if (hasCacheData && (weeklyDataCache._rawHash !== currentHash || !weeklyDataCache._rawHash)) {
-      console.log('[weeklyDataCache] rawData hash mismatch or legacy cache detected, clearing cache.');
-      weeklyDataCache = {};
-      try { localStorage.removeItem('holafly_weekly_data_cache'); } catch(e) {}
-    }
-    weeklyDataCache._rawHash = currentHash;
+    // Build per-week results from __rawSheetsCache (raw unfiltered sheets).
+    // This replaces the old weeklyDataCache + fetchAllWeeklyData + MOCK fallback,
+    // which used MOCK_DATA on GitHub Pages and assigned goals to fake agents.
     let weeklyResults = [];
     try {
-      weeklyResults = await fetchAllWeeklyData(weeks);
-    } catch (err) {
-      console.error("Error fetching weekly data:", err);
-      if (tbody) {
-        tbody.innerHTML = `<tr class="err-row"><td colspan="5">⚠️ Error calculating weekly goals.</td></tr>`;
+      const rawCache = window.__rawSheetsCache;
+      if (!rawCache || !rawCache.support || !rawCache.customerCare) {
+        console.warn('[updateWeeklyStandingsAndRender] No __rawSheetsCache available — cannot compute per-week goals.');
+      } else {
+        weeklyResults = weeks.map(week => {
+          // Filter raw sheets by this week's date range
+          const weekSupport = rawCache.support.filter(r => {
+            const d = getRowValueByKey(r, ['date_bog', 'Date', 'Fecha', 'date']);
+            return isDateInRange(d, week.start, week.end);
+          });
+          const weekCC = rawCache.customerCare.filter(r => {
+            const d = getRowValueByKey(r, ['Date', 'date', 'Fecha']);
+            return isDateInRange(d, week.start, week.end);
+          });
+          const weekPP = rawCache.ppMetrics.filter(r => {
+            const d = getRowValueByKey(r, ['date', 'Date', 'Fecha', 'fecha']);
+            const PP_FLOOR = '2026-06-15';
+            const dParsed = parseDateLoose(d);
+            if (dParsed && dParsed < parseDateLoose(PP_FLOOR)) return false;
+            return isDateInRange(d, week.start, week.end);
+          });
+          // Build the same roster shape the rest of the code expects
+          const registration = rawCache.registration || [];
+          const ccKpisMap = {};
+          const ppByEmail = {};
+          weekPP.forEach(r => {
+            const email = getRowEmail(r);
+            if (!email) return;
+            const total = parseFloat(getRowValueByKey(r, ['total', 'Total', 'PP', 'Puntos', 'puntos']) || 0);
+            if (!isNaN(total) && total >= 0) {
+              ppByEmail[email] = (ppByEmail[email] || 0) + total;
+            }
+          });
+          const supportKpisMap = {};
+          weekSupport.forEach(r => {
+            const email = getRowEmail(r);
+            if (!email) return;
+            if (!supportKpisMap[email]) {
+              supportKpisMap[email] = { chats: 0, csat_promoters: 0, csat_surveys: 0, qa_scores: [], fcr_successes: [], fcr_successes_total: 0, fcr_closures_total: 0, aht_totals: [], aht_seconds_total: 0, aht_conversations: 0 };
+            }
+            const s = supportKpisMap[email];
+            s.chats += parseFloat(getRowValueByKey(r, ['chats', 'Chats']) || 0);
+            const surveysVal = parseFloat(getRowValueByKey(r, ['CSAT Service', 'csat_surveys', 'csat_service', 'CSAT Surveys']) || 0);
+            if (!isNaN(surveysVal) && surveysVal > 0) {
+              s.csat_promoters += parseFloat(getRowValueByKey(r, ['CSAT Promoter', 'csat_promoters', 'csat_promoter', 'CSAT Promoters']) || 0);
+              s.csat_surveys += surveysVal;
+            }
+            const qa = parseFloat(getRowValueByKey(r, ['QI Score', 'qa_score', 'QA Score', 'QA']) || NaN);
+            if (!isNaN(qa) && qa > 0) s.qa_scores.push(qa);
+            const fcr = parseFloat(getRowValueByKey(r, ['FCR Success', 'fcr_success', 'FCR']) || NaN);
+            if (!isNaN(fcr) && fcr >= 0) s.fcr_successes.push(fcr);
+            s.fcr_successes_total += parseFloat(getRowValueByKey(r, ['FCR Success', 'fcr_success']) || 0);
+            s.fcr_closures_total += parseFloat(getRowValueByKey(r, ['fcr_closures', 'FCR Closures', 'close_conversations']) || 0);
+            const aht = parseFloat(getRowValueByKey(r, ['aht_seconds_total', 'AHT', 'AHT Seconds']) || NaN);
+            if (!isNaN(aht) && aht >= 0) s.aht_totals.push(aht);
+            let ahtSecondsVal = parseFloat(getRowValueByKey(r, ['aht_seconds_total']) || 0);
+            if (!ahtSecondsVal) ahtSecondsVal = parseFloat(getRowValueByKey(r, ['act_seconds_total']) || 0);
+            s.aht_seconds_total += ahtSecondsVal;
+            let ahtConversationsVal = parseFloat(getRowValueByKey(r, ['aht_conversations']) || 0);
+            if (!ahtConversationsVal) ahtConversationsVal = parseFloat(getRowValueByKey(r, ['act_conversations']) || 0);
+            s.aht_conversations += ahtConversationsVal;
+          });
+          weekCC.forEach(r => {
+            const email = getRowEmail(r);
+            if (!email) return;
+            if (!ccKpisMap[email]) ccKpisMap[email] = { pps: [], qas: [] };
+            const c = ccKpisMap[email];
+            const pp = parseFloat(getRowValueByKey(r, ['Suma_Total_Productivas', 'Suma Total Productivas']) || NaN);
+            if (!isNaN(pp) && pp >= 0) c.pps.push(pp);
+            const qa = parseFloat(getRowValueByKey(r, ['qa_WoW', 'qa_wow', 'QA_WoW', 'QA_wow', 'QA_WOW', 'QA', 'qa_score', 'QA Score', 'Calidad']) || NaN);
+            if (!isNaN(qa) && qa > 0) c.qas.push(qa);
+          });
+          // Build weekly support/customerCare arrays in the shape the rest of the code expects
+          const weeklySupport = [];
+          const supportEmails = {};
+          Object.keys(supportKpisMap).forEach(email => {
+            supportEmails[email] = true;
+            const s = supportKpisMap[email];
+            const avgQA = s.qa_scores.length ? s.qa_scores.reduce((a,b)=>a+b,0) / s.qa_scores.length : 0;
+            const avgFCR = s.fcr_closures_total > 0 ? s.fcr_successes_total / s.fcr_closures_total : 0;
+            const avgAHT = s.aht_conversations > 0 ? s.aht_seconds_total / s.aht_conversations : 0;
+            const csat = s.csat_surveys > 0 ? s.csat_promoters / s.csat_surveys : 0;
+            const reg = registration.find(rr => (getRowEmail(rr) || '').toLowerCase() === email);
+            const country = reg ? (getRowCountry(reg) || 'Unknown') : 'Unknown';
+            const tl = reg ? (getRowTeamLeader(reg) || 'TL') : 'TL';
+            const name = reg ? (getRowAgentName(reg) || email) : email;
+            weeklySupport.push({
+              'Assigned COuntry': country,
+              'Department': 'Support',
+              'Identifier': name,
+              'Email': email,
+              'Team Leader': tl,
+              'FCR': avgFCR, 'QA': avgQA, 'CSAT': csat, 'AHT': avgAHT, 'Chats': s.chats,
+              'Performance Score': avgFCR || avgQA || 0
+            });
+          });
+          const weeklyCustomerCare = [];
+          const ccEmails = {};
+          Object.keys(ccKpisMap).forEach(email => {
+            ccEmails[email] = true;
+            const c = ccKpisMap[email];
+            const totalPP = ppByEmail[email] || 0;
+            const avgQA = c.qas.length ? c.qas.reduce((a,b)=>a+b,0) / c.qas.length : 0;
+            const reg = registration.find(rr => (getRowEmail(rr) || '').toLowerCase() === email);
+            const country = reg ? (getRowCountry(reg) || 'Unknown') : 'Unknown';
+            const tl = reg ? (getRowTeamLeader(reg) || 'TL') : 'TL';
+            const name = reg ? (getRowAgentName(reg) || email) : email;
+            weeklyCustomerCare.push({
+              'Assigned COuntry': country,
+              'Department': 'Customer Care',
+              'Identifier': name,
+              'Email': email,
+              'Team Leader': tl,
+              'Total PP': totalPP,
+              'QA': avgQA,
+              'Performance Score': totalPP
+            });
+          });
+          // Also inject registration-only agents (no KPI data but they exist)
+          registration.forEach(reg => {
+            const email = (getRowEmail(reg) || '').toLowerCase();
+            if (!email) return;
+            const country = getRowCountry(reg) || 'Unknown';
+            const tl = getRowTeamLeader(reg);
+            if (!tl) return;
+            const name = getRowAgentName(reg) || email;
+            const regRow = { 'Assigned COuntry': country, 'Identifier': name, 'Email': email, 'Team Leader': tl };
+            if (!supportEmails[email] && !ccEmails[email] && ppByEmail[email]) {
+              // Has PP but no KPIs — likely CC
+              weeklyCustomerCare.push({
+                'Assigned COuntry': country, 'Department': 'Customer Care',
+                'Identifier': name, 'Email': email, 'Team Leader': tl,
+                'Total PP': ppByEmail[email] || 0, 'QA': 0, 'Performance Score': ppByEmail[email] || 0
+              });
+            } else if (!supportEmails[email] && !ccEmails[email] && !ppByEmail[email]) {
+              weeklySupport.push({
+                'Assigned COuntry': country, 'Department': 'Support',
+                'Identifier': name, 'Email': email, 'Team Leader': tl,
+                'FCR': 0, 'QA': 0, 'CSAT': 0, 'AHT': 0, 'Chats': 0, 'Performance Score': 0
+              });
+            }
+          });
+          return {
+            week,
+            data: { support: weeklySupport, customerCare: weeklyCustomerCare }
+          };
+        });
+        console.log('[updateWeeklyStandingsAndRender] Built weeklyResults from raw sheets for', weeks.length, 'weeks.');
       }
-      return;
+    } catch (err) {
+      console.error("Error building weekly data from raw sheets:", err);
     }
 
     // Combine all weeks' data for Support/Care Trackers (respecting date range)
@@ -5049,6 +5201,38 @@
         </td>
       </tr>`;
     });
+
+    // Modal de celebración: muestra qué país+dept ganó cada semana con sus goles
+    // Solo se muestra una vez por sesión (cuando hay nuevas semanas finalizadas)
+    const finishedWeeksWithGoals = [];
+    teamStats && Object.values(teamStats).forEach(t => {
+      if (t.goalHistory && t.goalHistory.length > 0) {
+        t.goalHistory.forEach(h => {
+          finishedWeeksWithGoals.push({
+            week: h.week,
+            country: t.country,
+            flag: t.flag,
+            dept: t.dept,
+            goals: h.goals,
+            perf: h.perf
+          });
+        });
+      }
+    });
+    if (finishedWeeksWithGoals.length > 0 && !window.__celebrationModalShown) {
+      window.__celebrationModalShown = true;
+      finishedWeeksWithGoals.sort((a, b) => a.week.localeCompare(b.week));
+      const modalLines = finishedWeeksWithGoals.map(g => {
+        const medals = ['', '🥇', '🥈', '🥉'];
+        const medal = medals[g.goals] || '⚽';
+        return `<div style="padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.08);">${medal} <strong>Week ${g.week}</strong> · ${g.flag} ${g.country} <em>${g.dept}</em> · +${g.goals} goals <span style="color: var(--muted); font-size: 12px;">(${g.perf.toFixed(1)}%)</span></div>`;
+      }).join('');
+      showCustomAlert(
+        `� <strong>Tournament Goals Awarded</strong>\n\n${modalLines}`,
+        '�'
+      );
+    }
+
     // Re-apply active filters to redraw the tables with the new combined data
     filterSupportTeam();
     filterCCTeam();
