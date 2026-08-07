@@ -1879,13 +1879,25 @@
         userEmail = 'Holafly User';
       }
       showApp();
-      // Set default dates and load
+      // Set default dates and load real data via Sheets API
       setDefaultDateRange();
-      if (typeof loadInitialDashboard === 'function') {
-        loadInitialDashboard();
-      } else if (typeof window.onload === 'function') {
-        // trigger the normal load
-      }
+      var startInput = document.getElementById('global-start-date');
+      var endInput = document.getElementById('global-end-date');
+      var startDate = startInput ? startInput.value : '';
+      var endDate = endInput ? endInput.value : '';
+      console.log('[standalone-auth] Fetching live data from Google Sheets...');
+      if (typeof showLoadingModal === 'function') showLoadingModal();
+      fetchStandaloneData(startDate, endDate).then(function(data) {
+        console.log('[standalone-auth] Data fetched:', data);
+        if (typeof hideLoadingModal === 'function') hideLoadingModal();
+        if (typeof initializeDashboard === 'function') {
+          initializeDashboard(data);
+        }
+      }).catch(function(err) {
+        console.error('[standalone-auth] Failed to fetch data:', err);
+        if (typeof hideLoadingModal === 'function') hideLoadingModal();
+        if (typeof handleLoadingError === 'function') handleLoadingError(err && err.message ? err.message : err);
+      });
     };
     gisTokenClient.requestAccessToken({ prompt: accessToken ? '' : 'consent' });
   }
@@ -1973,6 +1985,7 @@
 
   // Fetch all sheets in parallel and build rosters
   async function fetchStandaloneData(startDate, endDate) {
+    console.log('[standalone-data] Fetching 5 sheets from spreadsheet', SPREADSHEET_ID);
     const [regValues, supportValues, ccValues, pCountryValues, metricsValues] = await Promise.all([
       fetchSheetValues(SHEET_REGISTRATION + '!A:Z'),
       fetchSheetValues(SHEET_SUPPORT + '!A:Z'),
@@ -1980,6 +1993,13 @@
       fetchSheetValues(SHEET_PCOUNTRY + '!A:Z'),
       fetchSheetValues(SHEET_METRICS + '!A:Z'),
     ]);
+    console.log('[standalone-data] Raw row counts:', {
+      registration: (regValues || []).length,
+      support: (supportValues || []).length,
+      customerCare: (ccValues || []).length,
+      pCountry: (pCountryValues || []).length,
+      metrics: (metricsValues || []).length
+    });
 
     const registration = rowsToObjects(regValues);
     const supportRaw = rowsToObjects(supportValues);
@@ -5971,60 +5991,60 @@ document.addEventListener('DOMContentLoaded', function() {
 (function() {
   var origOnload = window.onload;
   window.onload = function() {
-    // Run original onload but intercept dashboard init
-    if (origOnload) {
-      try { origOnload(); } catch (e) { console.warn('orig onload failed:', e); }
-    }
-    // If we already have a token, show app immediately
+    // If we already have a token (cached), show app and fetch live data
     if (accessToken) {
+      console.log('[standalone-auth] Token already present, fetching live data on load');
       showApp();
       var startInput = document.getElementById('global-start-date');
       var endInput = document.getElementById('global-end-date');
       var startDate = startInput ? startInput.value : '';
       var endDate = endInput ? endInput.value : '';
-      loadStandaloneData(startDate, endDate).then(function(data) {
+      fetchStandaloneData(startDate, endDate).then(function(data) {
         if (typeof initializeDashboard === 'function') initializeDashboard(data);
+      }).catch(function(err) {
+        console.error('[standalone-auth] Failed to fetch data on load:', err);
       });
+      return;
+    }
+    // No token yet — run original onload (will trigger mock fallback, then user logs in)
+    if (origOnload) {
+      try { origOnload(); } catch (e) { console.warn('orig onload failed:', e); }
     }
   };
 })();
 
-// Hook the loadLiveSheetData to use standalone fetch
+// Hook the loadLiveSheetData to use standalone fetch (no delay — apply before window.onload fires)
 (function() {
-  var origLoadLiveSheetData = window.loadLiveSheetData;
-  // Override after it's defined - use a check on the function body
   document.addEventListener('DOMContentLoaded', function() {
-    // Wrap the original loadLiveSheetData if it exists
-    setTimeout(function() {
-      if (typeof window.loadLiveSheetData === 'function') {
-        var orig = window.loadLiveSheetData;
-        window.loadLiveSheetData = async function(onSuccess, onFailure) {
-          if (!accessToken) {
-            showAuthScreen();
-            if (onFailure) onFailure('Not authenticated');
-            return;
+    if (typeof window.loadLiveSheetData === 'function') {
+      var orig = window.loadLiveSheetData;
+      window.loadLiveSheetData = async function(onSuccess, onFailure) {
+        if (!accessToken) {
+          showAuthScreen();
+          if (onFailure) onFailure('Not authenticated');
+          return;
+        }
+        var startInput = document.getElementById('global-start-date');
+        var endInput = document.getElementById('global-end-date');
+        var startDate = startInput ? startInput.value : '';
+        var endDate = endInput ? endInput.value : '';
+        try {
+          var data = await fetchStandaloneData(startDate, endDate);
+          var ok = await initializeFreshDashboard(data, startDate, endDate);
+          if (ok) {
+            if (onSuccess) onSuccess(data);
+          } else {
+            if (onFailure) onFailure('No valid data returned');
           }
-          var startInput = document.getElementById('global-start-date');
-          var endInput = document.getElementById('global-end-date');
-          var startDate = startInput ? startInput.value : '';
-          var endDate = endInput ? endInput.value : '';
-          try {
-            var data = await fetchStandaloneData(startDate, endDate);
-            var ok = await initializeFreshDashboard(data, startDate, endDate);
-            if (ok) {
-              if (onSuccess) onSuccess(data);
-            } else {
-              if (onFailure) onFailure('No valid data returned');
-            }
-          } catch (err) {
-            console.error('Error fetching data:', err);
-            if (typeof handleLoadingError === 'function') handleLoadingError(err.message || err);
-            if (onFailure) onFailure(err);
-          }
-        };
-      }
-    }, 1000);
-  });
+        } catch (err) {
+          console.error('Error fetching data:', err);
+          if (typeof handleLoadingError === 'function') handleLoadingError(err.message || err);
+          if (onFailure) onFailure(err);
+        }
+      };
+      console.log('[standalone-auth] loadLiveSheetData overridden to use fetchStandaloneData');
+    }
+  }, false);
 })();
 </script>
 
