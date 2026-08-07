@@ -5232,8 +5232,9 @@
       }
 
       // Store per-team weekly data so the detail modal can render it
+      const teamDetailKey = t.country + '_' + t.dept;
       if (!window.__weeklyDetailTeams) window.__weeklyDetailTeams = {};
-      window.__weeklyDetailTeams[t.key] = {
+      window.__weeklyDetailTeams[teamDetailKey] = {
         country: t.country,
         flag: t.flag,
         dept: t.dept,
@@ -5267,7 +5268,7 @@
         <td><span style="font-weight: 700; color: var(--gold);">🏆 ${t.points} Pts</span></td>
         <td style="position: relative; overflow: visible;">
           <span class="goals-chip ${chipCls}">⚽ ${t.goals} Goals</span>
-          ${(t.weeklyPerformances && t.weeklyPerformances.length > 0) ? `<button onclick="openWeeklyDetailModal('${t.key.replace(/'/g, "\\'")}')" title="View weekly breakdown" style="background: transparent; border: 1.5px solid var(--line); border-radius: 20px; color: var(--muted); font-size: 11px; font-weight: 800; padding: 4px 10px; margin-left: 6px; cursor: pointer; font-family: inherit; transition: all 0.15s;" onmouseover="this.style.borderColor='var(--coral)';this.style.color='var(--coral)'" onmouseout="this.style.borderColor='var(--line)';this.style.color='var(--muted)'">📅 Weeks</button>` : ''}
+          ${(t.weeklyPerformances && t.weeklyPerformances.length > 0) ? `<button onclick="openWeeklyDetailModal('${teamDetailKey.replace(/'/g, "\\'")}')" title="View weekly breakdown" style="background: transparent; border: 1.5px solid var(--line); border-radius: 20px; color: var(--muted); font-size: 11px; font-weight: 800; padding: 4px 10px; margin-left: 6px; cursor: pointer; font-family: inherit; transition: all 0.15s;" onmouseover="this.style.borderColor='var(--coral)';this.style.color='var(--coral)'" onmouseout="this.style.borderColor='var(--line)';this.style.color='var(--muted)'">📅 Weeks</button>` : ''}
         </td>
       </tr>`;
     });
