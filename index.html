@@ -2407,6 +2407,30 @@
       s.aht_conversations += ahtConversationsVal;
     });
 
+    // ── TEMP DEBUG QA (remove after verification) ──
+    try {
+      ['andres.bautista@holafly.com'].forEach(e => {
+        const s = supportKpisMap[e];
+        console.log('[DEBUG QA] ' + e, JSON.stringify({
+          rowsProcessed: s ? (s.chats + s.csat_surveys + s.qa_scores.length + s.fcr_successes.length + s.fcr_closures_total + s.aht_totals.length + s.aht_seconds_total + s.aht_conversations) : 0,
+          qaCount: s ? s.qa_scores.length : 0,
+          qaScores: s ? s.qa_scores : [],
+          avgQA: s && s.qa_scores.length > 0 ? (s.qa_scores.reduce((a,b)=>a+b, 0) / s.qa_scores.length) : 0
+        }));
+      });
+      let dbgN = 0;
+      Object.keys(supportKpisMap).forEach(e => {
+        const s = supportKpisMap[e];
+        if (s && s.qa_scores.length > 0 && dbgN < 4) {
+          console.log('[DEBUG QA sample] ' + e, JSON.stringify({ qaCount: s.qa_scores.length, qaScores: s.qa_scores.slice(0, 15), avgQA: (s.qa_scores.reduce((a,b)=>a+b, 0) / s.qa_scores.length) }));
+          dbgN++;
+        }
+      });
+    } catch (dbgErr) {
+      console.error('[DEBUG QA] failed:', dbgErr);
+    }
+    // ── END TEMP DEBUG QA ──
+
     // ── Aggregate PP Metrics by email (NEW PP Metrics tab — replaces old Suma_Total_Productivas) ──
     const ppByEmail = {};
     ppMetricsRows.forEach(r => {
