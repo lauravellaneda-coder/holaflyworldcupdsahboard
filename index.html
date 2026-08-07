@@ -1810,12 +1810,13 @@
   const CLIENT_ID = '768426099608-1tu4cla61ns5dsa6dmq0bu1hrcp5vjb0.apps.googleusercontent.com';
   const SPREADSHEET_ID = '1aPdBa7tV8q--a8ZEVPtXpZn4DiEH22VH9n3NSbGMp7k';
   const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly';
+  // Sheet names — must match the tabs in the Google Spreadsheet exactly (case-sensitive).
   const SHEET_REGISTRATION = 'stg_team_registration';
   const SHEET_SUPPORT = 'stg_kpis_support';
   const SHEET_CC = 'stg_kpis_customer_care';
   const SHEET_PP_METRICS = 'PP Metrics';
-  const SHEET_GOALS = 'goals';
-  const SHEET_PCOUNTRY = 'p_country';
+  const SHEET_GOALS = 'Manual Goals';
+  const SHEET_PCOUNTRY = 'P_Country';
   const SHEET_METRICS = 'Metrics';
 
   let accessToken = null;
@@ -5221,15 +5222,24 @@
     });
     if (finishedWeeksWithGoals.length > 0 && !window.__celebrationModalShown) {
       window.__celebrationModalShown = true;
-      finishedWeeksWithGoals.sort((a, b) => a.week.localeCompare(b.week));
-      const modalLines = finishedWeeksWithGoals.map(g => {
-        const medals = ['', '🥇', '🥈', '🥉'];
-        const medal = medals[g.goals] || '⚽';
-        return `<div style="padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.08);">${medal} <strong>Week ${g.week}</strong> · ${g.flag} ${g.country} <em>${g.dept}</em> · +${g.goals} goals <span style="color: var(--muted); font-size: 12px;">(${g.perf.toFixed(1)}%)</span></div>`;
-      }).join('');
+      // Group by week and rank within each week (1st place = 5 goals, 2nd = 3, 3rd = 1)
+      const byWeek = {};
+      finishedWeeksWithGoals.forEach(g => {
+        if (!byWeek[g.week]) byWeek[g.week] = [];
+        byWeek[g.week].push(g);
+      });
+      const orderedLines = [];
+      Object.keys(byWeek).sort().forEach(week => {
+        const entries = byWeek[week].sort((a, b) => b.perf - a.perf);
+        entries.forEach((g, idx) => {
+          const medals = ['🥇', '🥈', '🥉'];
+          const medal = medals[idx] || '⚽';
+          orderedLines.push(`<div style="padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.08);">${medal} <strong>Week ${g.week}</strong> · ${g.flag} ${g.country} <em>${g.dept}</em> · +${g.goals} goals <span style="color: var(--muted); font-size: 12px;">(${g.perf.toFixed(1)}%)</span></div>`);
+        });
+      });
       showCustomAlert(
-        `� <strong>Tournament Goals Awarded</strong>\n\n${modalLines}`,
-        '�'
+        `🏆 <strong>Tournament Goals Awarded</strong>\n\n${orderedLines.join('')}`,
+        '🏆'
       );
     }
 
