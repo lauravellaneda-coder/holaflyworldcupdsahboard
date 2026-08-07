@@ -1945,14 +1945,26 @@
 
   function rowsToObjects(values) {
     if (!values || values.length === 0) return [];
-    const headers = values[0].map(h => (h || '').toString().trim());
+    // Skip leading empty rows — common in Sheets (people leave a blank row at the top).
+    // Otherwise we'd treat the first empty row as the header row, breaking every downstream lookup.
+    let headerIdx = 0;
+    while (headerIdx < values.length) {
+      const r = values[headerIdx];
+      if (r && r.some(c => c !== '' && c !== null && c !== undefined)) break;
+      headerIdx++;
+    }
+    if (headerIdx >= values.length) return [];
+    const headers = values[headerIdx].map(h => (h || '').toString().trim());
     const result = [];
-    for (let i = 1; i < values.length; i++) {
+    for (let i = headerIdx + 1; i < values.length; i++) {
       const row = values[i];
       if (!row || row.every(c => c === '' || c === null || c === undefined)) continue;
       const obj = {};
       headers.forEach((h, j) => { obj[h] = row[j] !== undefined ? row[j] : ''; });
       result.push(obj);
+    }
+    if (headerIdx > 0) {
+      console.log('[rowsToObjects] Skipped', headerIdx, 'leading empty row(s) before headers.');
     }
     return result;
   }
@@ -2463,7 +2475,11 @@
     console.log('[standalone-data] Rosters built:', JSON.stringify({
       supportAgents: support.length,
       ccAgents: customerCare.length,
-      ppEmails: Object.keys(ppByEmail).length
+      ppEmails: Object.keys(ppByEmail).length,
+      ccAgentsWithPP: customerCare.filter(r => (r['Total PP'] || 0) > 0).length,
+      ccAgentsWithQA: customerCare.filter(r => (r['QA'] || 0) > 0).length,
+      ccKpisMapSize: Object.keys(ccKpisMap).length,
+      ccKpisWithQaEntries: Object.keys(ccKpisMap).filter(k => ccKpisMap[k] && ccKpisMap[k].qas && ccKpisMap[k].qas.length > 0).length
     }));
 
     // ── Current week start (Monday) ──
