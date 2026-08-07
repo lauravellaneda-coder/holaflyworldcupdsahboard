@@ -2879,11 +2879,31 @@
     const range = getCurrentDateRange();
     const cached = loadDashboardClientCache(range.startDate, range.endDate);
     if (!cached) return false;
+    // Defensive: skip the cache if it looks like the hardcoded MOCK_DATA fallback.
+    // Otherwise we paint fake agents (MX_Analyst_Care_1 etc.) over the real data.
+    if (cached && cached.data && isMockLikeData(cached.data)) {
+      console.warn('[renderCachedDashboardIfAvailable] Detected MOCK-like cache — ignoring. Real data will paint on fetch.');
+      return false;
+    }
     initializeDashboard(cached.data);
     lastDataHash = computeDataHash(cached.data);
     const btn = document.getElementById('global-refresh-btn');
     if (btn) btn.title = `Showing saved data while refreshing. Saved at ${new Date(cached.savedAt).toLocaleString()}`;
     return true;
+  }
+
+  // Detects data that resembles the hardcoded MOCK_DATA fallback by checking for the
+  // synthetic identifiers (MX_Analyst_Care_1, ES_Agent_Support_1, etc.) and the small fixed count.
+  function isMockLikeData(data) {
+    if (!data) return false;
+    const MOCK_MARKERS = ['MX_Analyst_Care_1', 'ES_Agent_Support_1', 'CO_Analyst_Care_1'];
+    const cc = Array.isArray(data.customerCare) ? data.customerCare : [];
+    const sp = Array.isArray(data.support) ? data.support : [];
+    const allIds = cc.concat(sp).map(r => (r && r.Identifier) ? String(r.Identifier) : '');
+    for (const marker of MOCK_MARKERS) {
+      if (allIds.indexOf(marker) !== -1) return true;
+    }
+    return false;
   }
 
   async function initializeFreshDashboard(data, startDate, endDate) {
@@ -3804,8 +3824,20 @@
               })
               .getTournamentData(startDate, endDate);
           } else {
-            console.warn("Google Apps Script environments missing. Loading mock data...");
-            initializeDashboard(MOCK_DATA);
+            // Only fall back to MOCK if neither Apps Script nor standalone fetch is available.
+            // Otherwise we'd paint fake agents over the real Sheet data we're about to fetch.
+            if (typeof fetchStandaloneData === 'function') {
+              console.warn("[standalone-auth] Apps Script + live URL missing, but fetchStandaloneData is available. Triggering fetch instead of MOCK.");
+              fetchStandaloneData(startDate, endDate).then(function(data) {
+                if (typeof initializeDashboard === 'function') initializeDashboard(data);
+              }).catch(function(err) {
+                console.error('[standalone-auth] fetchStandaloneData fallback failed:', err);
+                initializeDashboard(MOCK_DATA);
+              });
+            } else {
+              console.warn("Google Apps Script environments missing. Loading mock data...");
+              initializeDashboard(MOCK_DATA);
+            }
           }
         }
       );
@@ -4029,8 +4061,16 @@
     processTabData(data.customerCare, "Customer Care");
     processTabData(data.registration, "Support");
 
-    await renderGeneralStanding();
-    populateCountryDropdowns();
+    try {
+      await renderGeneralStanding();
+    } catch (e) {
+      console.error('[initializeDashboard] renderGeneralStanding threw — continuing:', e);
+    }
+    try {
+      populateCountryDropdowns();
+    } catch (e) {
+      console.error('[initializeDashboard] populateCountryDropdowns threw — continuing:', e);
+    }
 
     // Restore primary filters
     if (supportCountrySelect) supportCountrySelect.value = prevSupportCountry;
@@ -4040,9 +4080,13 @@
     if (supportSearchInput && prevSupportSearch) supportSearchInput.value = prevSupportSearch;
     if (ccSearchInput && prevCCSearch) ccSearchInput.value = prevCCSearch;
 
-    updateTLDropdown('support');
-    updateTLDropdown('customerCare');
-    
+    try {
+      updateTLDropdown('support');
+      updateTLDropdown('customerCare');
+    } catch (e) {
+      console.error('[initializeDashboard] updateTLDropdown threw — continuing:', e);
+    }
+
     // Restore previous TL selection (if it still exists in the dropdown)
     if (supportTLSelect && prevSupportTL) {
       const hasTL = Array.from(supportTLSelect.options).some(opt => opt.value === prevSupportTL);
@@ -4053,9 +4097,20 @@
       if (hasTL) ccTLSelect.value = prevCCTL;
     }
 
-    // Re-apply active filters to redraw the tables with the new data
-    filterSupportTeam();
-    filterCCTeam();
+    // Re-apply active filters to redraw the tables with the new data.
+    // Wrap each in try/catch so one failure can't leave the table showing stale MOCK data.
+    try {
+      filterSupportTeam();
+      console.log('[initializeDashboard] filterSupportTeam rendered. support count:', (rawData && rawData.support) ? rawData.support.length : 0);
+    } catch (e) {
+      console.error('[initializeDashboard] filterSupportTeam threw:', e);
+    }
+    try {
+      filterCCTeam();
+      console.log('[initializeDashboard] filterCCTeam rendered. customerCare count:', (rawData && rawData.customerCare) ? rawData.customerCare.length : 0);
+    } catch (e) {
+      console.error('[initializeDashboard] filterCCTeam threw:', e);
+    }
   }
 
   function readRowMetricValue(row, metricObj) {
