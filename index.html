@@ -4017,7 +4017,10 @@
     const prevCCSearch = ccSearchInput ? ccSearchInput.value : "";
 
     rawData = data;
-    if (data.points && Object.keys(teamPointsMap).length === 0) {
+    // Rebuild team points on EVERY dashboard init: the points map must reflect
+    // the freshest P_Country data even when a previous render (e.g. MOCK or an
+    // earlier date range) already populated it.
+    if (data.points) {
       processTeamPoints(data);
     }
     allTeamLeaders = new Set();
