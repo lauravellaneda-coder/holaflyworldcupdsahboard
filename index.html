@@ -1981,10 +1981,9 @@
     let m = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
     if (m) return new Date(+m[1], +m[2]-1, +m[3]);
     // Two-component format: detect DMY vs MDY heuristically.
-    // PP Metrics tab uses MM/DD/YYYY (e.g. "07/28/2026" = July 28).
-    // If first component > 12 → unambiguously a day → DD/MM/YYYY.
-    // If second component > 12 → unambiguously a month → MM/DD/YYYY.
-    // If both ≤ 12 → ambiguous; default to MDY to match the verified PP Metrics data.
+    // Default is DMY (DD/MM/YYYY) because the LATAM backend (Support/CC sheets with
+    // date_bog / Date columns) exports in DD/MM/YYYY. PP Metrics sheet is the
+    // exception — it exports MDY — and uses parseDateLooseMDY explicitly below.
     m = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
     if (m) {
       let y = +m[3]; if (y < 100) y += 2000;
@@ -1992,10 +1991,35 @@
       let month, day;
       if (a > 12) { month = b; day = a; }       // unambiguously DD/MM
       else if (b > 12) { month = a; day = b; }  // unambiguously MM/DD
-      else { month = a; day = b; }              // ambiguous → default MDY (matches PP Metrics)
+      else { month = b; day = a; }              // ambiguous → default DMY (LATAM convention)
       const dt = new Date(y, month - 1, day);
       return isNaN(dt.getTime()) ? null : dt;
     }
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  // PP Metrics sheet uses MM/DD/YYYY (e.g. "07/28/2026" = July 28). Default for
+  // everything else is DMY.
+  function parseDateLooseMDY(s) {
+    if (!s) return null;
+    const str = s.toString().trim();
+    let m = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    if (m) return new Date(+m[1], +m[2]-1, +m[3]);
+    m = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+    if (m) {
+      let y = +m[3]; if (y < 100) y += 2000;
+      const a = +m[1], b = +m[2];
+      let month, day;
+      if (a > 12) { month = b; day = a; }
+      else if (b > 12) { month = a; day = b; }
+      else { month = a; day = b; }              // ambiguous → MDY
+      const dt = new Date(y, month - 1, day);
+      return isNaN(dt.getTime()) ? null : dt;
+    }
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? null : d;
+  }
     const d = new Date(str);
     return isNaN(d.getTime()) ? null : d;
   }
@@ -2141,9 +2165,10 @@
       const date = getRowValueByKey(r, ['date', 'Date', 'Fecha', 'fecha']);
       // PP Metrics tab includes historical 2025 data we want to ignore.
       // Hard floor: only include rows >= 2026-06-15 (tournament start).
+      // PP Metrics uses MM/DD/YYYY (use MDY-specific parser).
       const PP_FLOOR = '2026-06-15';
-      const dParsed = parseDateLoose(date);
-      if (dParsed && dParsed < parseDateLoose(PP_FLOOR)) return false;
+      const dParsed = parseDateLooseMDY(date);
+      if (dParsed && dParsed < parseDateLooseMDY(PP_FLOOR)) return false;
       return isDateInRange(date, startDate, endDate);
     });
 
@@ -4592,7 +4617,18 @@
     try {
       const rawCache = window.__rawSheetsCache;
       if (!rawCache || !rawCache.support || !rawCache.customerCare) {
-        console.warn('[updateWeeklyStandingsAndRender] No __rawSheetsCache available — cannot compute per-week goals.');
+        console.warn('[updateWeeklyStandingsAndRender] No __rawSheetsCache available — falling back to historicalRawData.');
+        // Fallback: use historicalRawData (the last successfully fetched roster)
+        // so per-week goals still get computed even if the Sheets fetch is in flight.
+        if (historicalRawData && historicalRawData.support && historicalRawData.customerCare) {
+          weeklyResults = weeks.map(week => ({
+            week,
+            data: { support: historicalRawData.support, customerCare: historicalRawData.customerCare }
+          }));
+        } else {
+          console.warn('[updateWeeklyStandingsAndRender] No data available at all — General Standing will be empty.');
+          weeklyResults = [];
+        }
       } else {
         weeklyResults = weeks.map(week => {
           // Filter raw sheets by this week's date range
@@ -4607,8 +4643,9 @@
           const weekPP = rawCache.ppMetrics.filter(r => {
             const d = getRowValueByKey(r, ['date', 'Date', 'Fecha', 'fecha']);
             const PP_FLOOR = '2026-06-15';
-            const dParsed = parseDateLoose(d);
-            if (dParsed && dParsed < parseDateLoose(PP_FLOOR)) return false;
+            // PP Metrics uses MM/DD/YYYY
+            const dParsed = parseDateLooseMDY(d);
+            if (dParsed && dParsed < parseDateLooseMDY(PP_FLOOR)) return false;
             return isDateInRange(d, week.start, week.end);
           });
           // Build the same roster shape the rest of the code expects
