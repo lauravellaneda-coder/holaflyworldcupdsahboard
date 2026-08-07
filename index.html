@@ -3792,24 +3792,33 @@
       renderMetricManagerList();
     }
 
+    // Show loading indicator immediately while we fetch + calculate.
+    if (typeof showLoadingModal === 'function') showLoadingModal();
+
     loadLiveSheetData(
-      () => console.log("Stats reloaded with new date range"),
       () => {
+        // Success: hide modal once data + calculations are done
+        if (typeof hideLoadingModal === 'function') hideLoadingModal();
+        console.log("Stats reloaded with new date range");
+      },
+      () => {
+        // Failure path — hide modal in both branches
         if (typeof google !== 'undefined' && google.script && google.script.run) {
           showLoadingModal();
           google.script.run
             .withSuccessHandler(async data => {
               await initializeFreshDashboard(data, startDate, endDate);
-              hideLoadingModal();
+              if (typeof hideLoadingModal === 'function') hideLoadingModal();
             })
             .withFailureHandler(err => {
               handleLoadingError(err);
-              hideLoadingModal();
+              if (typeof hideLoadingModal === 'function') hideLoadingModal();
             })
             .getTournamentData(startDate, endDate);
         } else {
           // Redraw table using current data if request fails
           initializeDashboard(rawData);
+          if (typeof hideLoadingModal === 'function') hideLoadingModal();
         }
       }
     );
