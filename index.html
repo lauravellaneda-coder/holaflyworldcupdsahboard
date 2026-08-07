@@ -2176,9 +2176,12 @@
     }));
 
     // Filter by date range
+    // NOTE: stg_kpis_support exports MM/DD/YYYY (confirmed against live rows like
+    // "8/1/2026" = Aug 1). The DMY parser corrupts ambiguous dates (day <= 12):
+    // "7/8/2026" became Aug 7 and the QA audit was lost. Support must use MDY.
     let supportFiltered = supportRaw.filter(r => {
       const date = getRowValueByKey(r, ['date_bog', 'Date', 'Fecha', 'date']);
-      return isDateInRange(date, startDate, endDate);
+      return isDateInRangeMDY(date, startDate, endDate);
     });
     let ccFiltered = ccRaw.filter(r => {
       const date = getRowValueByKey(r, ['Date', 'date', 'Fecha']);
@@ -2219,7 +2222,7 @@
     };
     if (supportRaw.length > 0 && supportFiltered.length === 0) {
       console.warn('[standalone-data] Date filter excluded all support rows. Falling back to last 180 days.');
-      supportFiltered = widenFilter(supportRaw, ['date_bog', 'Date', 'Fecha', 'date']);
+      supportFiltered = widenFilter(supportRaw, ['date_bog', 'Date', 'Fecha', 'date'], true);
       console.log('[standalone-data] Support fallback (180d) count:', supportFiltered.length);
     }
     if (ccRaw.length > 0 && ccFiltered.length === 0) {
@@ -4712,7 +4715,8 @@
           // Filter raw sheets by this week's date range
           const weekSupport = rawCache.support.filter(r => {
             const d = getRowValueByKey(r, ['date_bog', 'Date', 'Fecha', 'date']);
-            return isDateInRange(d, week.start, week.end);
+            // stg_kpis_support is MM/DD/YYYY (confirmed against live rows) — MDY parser.
+            return isDateInRangeMDY(d, week.start, week.end);
           });
           const weekCC = rawCache.customerCare.filter(r => {
             const d = getRowValueByKey(r, ['Date', 'date', 'Fecha']);
@@ -4755,9 +4759,9 @@
               s.csat_promoters += parseFloat(getRowValueByKey(r, ['csat_promoters']) || 0);
               s.csat_surveys += surveysVal;
             }
-            // QA: strictly qa_score (col AA) — no fallbacks
+            // QA: strictly qa_score (col AA) — no fallbacks. qa >= 0: a real audit that scored 0% must count.
             const qa = parseFloat(getRowValueByKey(r, ['qa_score']) || NaN);
-            if (!isNaN(qa) && qa > 0) s.qa_scores.push(qa);
+            if (!isNaN(qa) && qa >= 0) s.qa_scores.push(qa);
             // FCR: strictly fcr_success (col AC) / fcr_closures (col AB)
             const fcr = parseFloat(getRowValueByKey(r, ['fcr_success']) || NaN);
             if (!isNaN(fcr) && fcr >= 0) s.fcr_successes.push(fcr);
