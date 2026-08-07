@@ -1814,6 +1814,7 @@
   const SHEET_SUPPORT = 'stg_kpis_support';
   const SHEET_CC = 'stg_kpis_customer_care';
   const SHEET_PP_METRICS = 'PP Metrics';
+  const SHEET_GOALS = 'goals';
   const SHEET_PCOUNTRY = 'p_country';
   const SHEET_METRICS = 'Metrics';
 
@@ -1986,15 +1987,16 @@
 
   // Fetch all sheets in parallel and build rosters
   async function fetchStandaloneData(startDate, endDate) {
-    console.log('[standalone-data] Fetching 6 sheets from spreadsheet', SPREADSHEET_ID);
+    console.log('[standalone-data] Fetching 7 sheets from spreadsheet', SPREADSHEET_ID);
     console.log('[standalone-data] Date range:', startDate, 'to', endDate);
-    const [regValues, supportValues, ccValues, pCountryValues, metricsValues, ppMetricsValues] = await Promise.all([
+    const [regValues, supportValues, ccValues, pCountryValues, metricsValues, ppMetricsValues, goalsValues] = await Promise.all([
       fetchSheetValues(SHEET_REGISTRATION + '!A:Z'),
       fetchSheetValues(SHEET_SUPPORT + '!A:Z'),
       fetchSheetValues(SHEET_CC + '!A:Z'),
       fetchSheetValues(SHEET_PCOUNTRY + '!A:Z'),
       fetchSheetValues(SHEET_METRICS + '!A:Z'),
       fetchSheetValues(SHEET_PP_METRICS + '!A:Z'),
+      fetchSheetValues(SHEET_GOALS + '!A:Z'),
     ]);
     const counts = {
       registration: (regValues || []).length,
@@ -2002,7 +2004,8 @@
       customerCare: (ccValues || []).length,
       pCountry: (pCountryValues || []).length,
       metrics: (metricsValues || []).length,
-      ppMetrics: (ppMetricsValues || []).length
+      ppMetrics: (ppMetricsValues || []).length,
+      goals: (goalsValues || []).length
     };
     console.log('[standalone-data] Raw row counts (incl header):', JSON.stringify(counts));
     if (supportValues && supportValues[0]) {
@@ -2012,11 +2015,16 @@
       console.log('[standalone-data] CC sheet headers:', JSON.stringify(ccValues[0]));
     }
     if (regValues && regValues[0]) {
+      console.log('[standalone-data] Registration headers:', JSON.stringify(regValues[0]));
       console.log('[standalone-data] Registration sample row:', JSON.stringify(regValues[1] || {}));
     }
     if (ppMetricsValues && ppMetricsValues[0]) {
       console.log('[standalone-data] PP Metrics headers:', JSON.stringify(ppMetricsValues[0]));
       console.log('[standalone-data] PP Metrics sample row:', JSON.stringify(ppMetricsValues[1] || {}));
+    }
+    if (goalsValues && goalsValues[0]) {
+      console.log('[standalone-data] Goals headers:', JSON.stringify(goalsValues[0]));
+      console.log('[standalone-data] Goals sample row:', JSON.stringify(goalsValues[1] || {}));
     }
 
     const registration = rowsToObjects(regValues);
@@ -2025,6 +2033,7 @@
     const pCountry = rowsToObjects(pCountryValues);
     const metrics = rowsToObjects(metricsValues);
     const ppMetricsRaw = rowsToObjects(ppMetricsValues);
+    const goalsRaw = rowsToObjects(goalsValues);
 
     console.log('[standalone-data] After rowsToObjects:', JSON.stringify({
       registration: registration.length,
@@ -2032,7 +2041,8 @@
       cc: ccRaw.length,
       pCountry: pCountry.length,
       metrics: metrics.length,
-      ppMetrics: ppMetricsRaw.length
+      ppMetrics: ppMetricsRaw.length,
+      goals: goalsRaw.length
     }));
 
     // Filter by date range
@@ -2085,7 +2095,7 @@
     }
 
     // Build the same shape the original code expects
-    return buildStandaloneRosters(registration, supportFiltered, ccFiltered, pCountry, metrics, ppMetricsFiltered);
+    return buildStandaloneRosters(registration, supportFiltered, ccFiltered, pCountry, metrics, ppMetricsFiltered, goalsRaw);
   }
 
   function getRowValueByKey(row, possibleKeys) {
@@ -2099,8 +2109,9 @@
     return '';
   }
 
-  function buildStandaloneRosters(registration, supportRows, ccRows, pCountry, metrics, ppMetricsRows) {
+  function buildStandaloneRosters(registration, supportRows, ccRows, pCountry, metrics, ppMetricsRows, goalsRows) {
     ppMetricsRows = ppMetricsRows || [];
+    goalsRows = goalsRows || [];
     // Extract emails by squad
     const supportEmails = {};
     supportRows.forEach(r => {
@@ -2112,6 +2123,13 @@
       const e = normalizeString(getRowValueByKey(r, ['Analyst email', 'Email', 'email', 'Agent Email']));
       if (e && e.indexOf('@') !== -1) ccEmails[e] = true;
     });
+    // PP Metrics is the source of truth for who is CC (CC sheet no longer has email column)
+    const ppMetricEmails = {};
+    ppMetricsRows.forEach(r => {
+      const e = normalizeString(getRowValueByKey(r, ['email', 'Email', 'agent_email']));
+      if (e && e.indexOf('@') !== -1) ppMetricEmails[e] = true;
+    });
+    console.log('[standalone-data] ppMetricEmails count (CC identifier):', Object.keys(ppMetricEmails).length);
 
     // ── Aggregate Support metrics by email (NEW sheet columns) ──
     const supportKpisMap = {};
@@ -2169,7 +2187,8 @@
       const tl = getRowValueByKey(r, ['Team Lead / Coordinator', 'Team Leader', 'Leader', 'TL']) || 'TL';
 
       let isCC = false;
-      if (ccEmails[email]) isCC = true;
+      if (ppMetricEmails[email]) isCC = true;        // PP Metrics is CC-only → strongest signal
+      else if (ccEmails[email]) isCC = true;
       else if (supportEmails[email]) isCC = false;
       else {
         const dept = getRowValueByKey(r, ['Department', 'Departamento', 'Squad', 'Equipo']);
@@ -2226,6 +2245,26 @@
       pointsByTeam[key] = (pointsByTeam[key] || 0) + pts;
     });
 
+    // ── Build manualGoalsByTeam from goals sheet ──
+    const manualGoalsByTeam = {};
+    goalsRows.forEach(r => {
+      const country = getRowValueByKey(r, ['Country', 'Pais', 'country']);
+      const tl = getRowValueByKey(r, ['Team Leader', 'Leader', 'TL', 'team leader']);
+      const goalsVal = parseFloat(getRowValueByKey(r, ['goals', 'Goals', 'goles', 'Goles']) || 0);
+      if (!country || isNaN(goalsVal)) return;
+      // Department inference: by TL vote map or default Support
+      let dept = 'Support';
+      // Try to detect department from a column
+      const deptVal = getRowValueByKey(r, ['Department', 'Departamento', 'Squad', 'Equipo', 'department']);
+      if (deptVal && normalizeString(deptVal).indexOf('care') !== -1) dept = 'Customer Care';
+      const key = country + '_' + dept;
+      manualGoalsByTeam[key] = (manualGoalsByTeam[key] || 0) + goalsVal;
+    });
+    console.log('[standalone-data] Manual goals aggregated:', JSON.stringify({
+      entries: Object.keys(manualGoalsByTeam).length,
+      sample: Object.entries(manualGoalsByTeam).slice(0, 8)
+    }));
+
     console.log('[standalone-data] Rosters built:', JSON.stringify({
       supportAgents: support.length,
       ccAgents: customerCare.length,
@@ -2242,7 +2281,7 @@
     return {
       support, customerCare,
       points: pointsByTeam,
-      manualGoals: {},
+      manualGoals: manualGoalsByTeam,
       metrics,
       currentWeekStart,
       todayWeekStart: currentWeekStart,
