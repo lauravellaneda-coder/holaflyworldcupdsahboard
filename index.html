@@ -2138,6 +2138,11 @@
       console.log('[standalone-data] Goals headers:', JSON.stringify(goalsValues[0]));
       console.log('[standalone-data] Goals sample row:', JSON.stringify(goalsValues[1] || {}));
     }
+    if (pCountryValues && pCountryValues[0]) {
+      console.log('[standalone-data] P_Country headers:', JSON.stringify(pCountryValues[0]));
+      console.log('[standalone-data] P_Country sample row:', JSON.stringify(pCountryValues[1] || {}));
+      console.log('[standalone-data] P_Country sample row 2:', JSON.stringify(pCountryValues[2] || {}));
+    }
 
     const registration = rowsToObjects(regValues);
     const supportRaw = rowsToObjects(supportValues);
@@ -2510,24 +2515,6 @@
       }
     });
 
-    // ── Build pointsByTeam from pCountry (using tlDeptMap, mirrors code (22).gs) ──
-    const pointsByTeam = {};
-    pCountry.forEach(r => {
-      const tl = getRowTeamLeader(r);
-      const country = getRowCountry(r);
-      const pts = parseFloat(getRowValueByKey(r, ['points', 'Points', 'puntos', 'Puntos']) || 0);
-      if (!country || isNaN(pts)) return;
-      let dept = 'Support';
-      if (tl) {
-        dept = tlDeptMap[normalizeString(tl)] || 'Support';
-      } else {
-        const deptVal = getRowValueByKey(r, ['Department', 'Departamento', 'Squad', 'Equipo']);
-        if (deptVal && deptVal.toLowerCase().indexOf('care') !== -1) dept = 'Customer Care';
-      }
-      const key = country + '_' + dept;
-      pointsByTeam[key] = (pointsByTeam[key] || 0) + pts;
-    });
-
     // ── Build manualGoalsByTeam from goals sheet (using tlDeptMap, mirrors code (22).gs) ──
     const manualGoalsByTeam = {};
     goalsRows.forEach(r => {
@@ -2549,6 +2536,36 @@
     console.log('[standalone-data] Manual goals aggregated:', JSON.stringify({
       entries: Object.keys(manualGoalsByTeam).length,
       sample: Object.entries(manualGoalsByTeam).slice(0, 8)
+    }));
+
+    // ── Build pointsByTeam from pCountry (dept aligned with goals sheet by country) ──
+    const pointsByTeam = {};
+    pCountry.forEach(r => {
+      const tl = getRowTeamLeader(r);
+      const country = getRowCountry(r);
+      const pts = parseFloat(getRowValueByKey(r, ['points', 'Points', 'puntos', 'Puntos']) || 0);
+      if (!country || isNaN(pts)) return;
+      let dept = 'Support';
+      if (tl) {
+        dept = tlDeptMap[normalizeString(tl)] || 'Support';
+      } else {
+        const deptVal = getRowValueByKey(r, ['Department', 'Departamento', 'Squad', 'Equipo']);
+        if (deptVal && deptVal.toLowerCase().indexOf('care') !== -1) dept = 'Customer Care';
+      }
+      // Align with the department the goals sheet already knows for this country.
+      if (manualGoalsByTeam[country + '_Customer Care'] !== undefined) dept = 'Customer Care';
+      else if (manualGoalsByTeam[country + '_Support'] !== undefined) dept = 'Support';
+      const key = country + '_' + dept;
+      pointsByTeam[key] = (pointsByTeam[key] || 0) + pts;
+    });
+    console.log('[standalone-data] Points aggregated:', JSON.stringify({
+      entries: Object.keys(pointsByTeam).length,
+      sample: Object.entries(pointsByTeam).slice(0, 8),
+      germany: pointsByTeam['Alemania_Customer Care'] !== undefined
+        ? pointsByTeam['Alemania_Customer Care']
+        : pointsByTeam['Alemania_Support'] !== undefined
+          ? pointsByTeam['Alemania_Support']
+          : 'MISSING'
     }));
 
     console.log('[standalone-data] Rosters built:', JSON.stringify({
