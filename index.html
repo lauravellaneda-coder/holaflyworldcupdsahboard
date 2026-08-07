@@ -4650,6 +4650,21 @@
 
     const weeks = getWeeksInRange(startDateStr, endDateStr);
 
+    // Roster membership is the source of truth for team existence: an agent
+    // belongs to the department the boards (buildStandaloneRosters) assigned.
+    // The weekly KPI sheets alone must NOT create teams the boards don't have
+    // (e.g. a Customer Care agent of Brazil must never produce "Brazil Support").
+    const rosterDeptByEmail = {};
+    [(rawData && rawData.support) || [], (rawData && rawData.customerCare) || []]
+      .forEach((rows, idx) => {
+        const dept = idx === 0 ? 'Support' : 'Customer Care';
+        rows.forEach(r => {
+          const e = (getRowEmail(r) || '').toLowerCase();
+          if (e) rosterDeptByEmail[e] = dept;
+        });
+      });
+    const hasRoster = Object.keys(rosterDeptByEmail).length > 0;
+
     // Pintar el badge de "Active Week" en el hero del portal 1
     const portal1HeroLabel = document.querySelector('#portal1 .hero-label');
     if (portal1HeroLabel && weeks.length > 0) {
@@ -4773,6 +4788,9 @@
             if (!reg) return;
             const country = getRowCountry(reg);
             if (!country) return;
+            // A weekly Support KPI entry must not create a Support team the boards
+            // don't have: if the roster says this agent is Customer Care, drop them.
+            if (hasRoster && rosterDeptByEmail[email] !== 'Support') return;
             const tl = getRowTeamLeader(reg);
             const name = getRowAgentName(reg) || email;
             weeklySupport.push({
@@ -4797,6 +4815,9 @@
             if (!reg) return;
             const country = getRowCountry(reg);
             if (!country) return;
+            // Same roster rule: a CC KPI entry must not create a CC team the boards
+            // don't have. If the roster says this agent is Support, drop them here.
+            if (hasRoster && rosterDeptByEmail[email] !== 'Customer Care') return;
             const tl = getRowTeamLeader(reg);
             const name = getRowAgentName(reg) || email;
             weeklyCustomerCare.push({
@@ -4810,26 +4831,37 @@
               'Performance Score': totalPP
             });
           });
-          // Also inject registration-only agents (no KPI data but they exist)
+          // Also inject registration-only agents (no KPI data but they exist).
+          // Department comes from the boards' roster (source of truth): agents
+          // the boards don't have (or classify in the other dept) are NOT injected.
           registration.forEach(reg => {
             const email = (getRowEmail(reg) || '').toLowerCase();
             if (!email) return;
             const country = getRowCountry(reg);
             const tl = getRowTeamLeader(reg);
             if (!country || !tl) return;
-            const name = getRowAgentName(reg) || email;
-            const regRow = { 'Assigned COuntry': country, 'Identifier': name, 'Email': email, 'Team Leader': tl };
-            if (!supportEmails[email] && !ccEmails[email] && ppByEmail[email]) {
-              // Has PP but no KPIs — likely CC
+            if (supportEmails[email] || ccEmails[email]) return; // already added via KPI blocks
+            const rosterDept = rosterDeptByEmail[email];
+            if (hasRoster) {
+              if (!rosterDept) return; // boards don't know this agent — do not create a team
+            } else if (ppByEmail[email]) {
               weeklyCustomerCare.push({
                 'Assigned COuntry': country, 'Department': 'Customer Care',
-                'Identifier': name, 'Email': email, 'Team Leader': tl,
+                'Identifier': getRowAgentName(reg) || email, 'Email': email, 'Team Leader': tl,
                 'Total PP': ppByEmail[email] || 0, 'QA': 0, 'Performance Score': ppByEmail[email] || 0
               });
-            } else if (!supportEmails[email] && !ccEmails[email] && !ppByEmail[email]) {
+              return;
+            }
+            if (hasRoster && rosterDept === 'Customer Care') {
+              weeklyCustomerCare.push({
+                'Assigned COuntry': country, 'Department': 'Customer Care',
+                'Identifier': getRowAgentName(reg) || email, 'Email': email, 'Team Leader': tl,
+                'Total PP': ppByEmail[email] || 0, 'QA': 0, 'Performance Score': ppByEmail[email] || 0
+              });
+            } else {
               weeklySupport.push({
                 'Assigned COuntry': country, 'Department': 'Support',
-                'Identifier': name, 'Email': email, 'Team Leader': tl,
+                'Identifier': getRowAgentName(reg) || email, 'Email': email, 'Team Leader': tl,
                 'FCR': 0, 'QA': 0, 'CSAT': 0, 'AHT': 0, 'Chats': 0, 'Performance Score': 0
               });
             }
