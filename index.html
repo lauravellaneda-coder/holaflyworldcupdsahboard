@@ -1892,7 +1892,11 @@
       fetchStandaloneData(startDate, endDate).then(function(data) {
         console.log('[standalone-auth] Data fetched:', data);
         if (typeof hideLoadingModal === 'function') hideLoadingModal();
-        if (typeof initializeDashboard === 'function') {
+        // Use initializeFreshDashboard so the cache gets saved with the fresh data,
+        // not stale values from previous buggy versions.
+        if (typeof initializeFreshDashboard === 'function') {
+          initializeFreshDashboard(data, startDate, endDate);
+        } else if (typeof initializeDashboard === 'function') {
           initializeDashboard(data);
         }
       }).catch(function(err) {
@@ -2909,6 +2913,17 @@
       console.warn('[renderCachedDashboardIfAvailable] Detected MOCK-like cache — ignoring. Real data will paint on fetch.');
       return false;
     }
+    // Defensive: skip cache that has obviously wrong totals from old buggy versions
+    // (e.g. Mauricio used to show 2335.1 due to PP Metrics + Suma_Total_Productivas double-counting).
+    // If the cached customerCare contains Mauricio with >2000 PP for a normal range, ignore.
+    try {
+      const cc = (cached.data && cached.data.customerCare) || [];
+      const mauro = cc.find(r => r && (r.Email === 'mauricio.salas@holafly.com' || (r.Identifier && r.Identifier.indexOf('Mauricio') !== -1 && r.Identifier.indexOf('Salas') !== -1)));
+      if (mauro && (mauro['Total PP'] > 2000 || mauro['Performance Score'] > 2000)) {
+        console.warn('[renderCachedDashboardIfAvailable] Detected stale cache with wrong Mauricio PP (' + mauro['Total PP'] + ') — ignoring. Real data will paint on fetch.');
+        return false;
+      }
+    } catch (e) { /* ignore detection errors */ }
     initializeDashboard(cached.data);
     lastDataHash = computeDataHash(cached.data);
     const btn = document.getElementById('global-refresh-btn');
