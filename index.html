@@ -2443,7 +2443,10 @@
       const pp = parseFloat(getRowValueByKey(r, ['Suma_Total_Productivas', 'Suma Total Productivas']) || NaN);
       if (!isNaN(pp) && pp >= 0) c.pps.push(pp);
 
-      const qa = parseFloat(getRowValueByKey(r, ['qa_WoW', 'qa_wow', 'QA_WoW', 'QA_wow', 'QA_WOW', 'QA', 'qa_score', 'QA Score', 'Calidad']) || NaN);
+      // QA must come ONLY from the qa_WoW column (col AZ) of stg_kpis_customer_care.
+      // Strict exact-match: never fall back to QA / qa_score / QA Score / Calidad,
+      // those columns carry a different value (e.g. 97.7) and corrupt the average.
+      const qa = parseFloat(getRowValueByKey(r, ['qa_WoW']) || NaN);
       if (!isNaN(qa) && qa > 0) c.qas.push(qa);
     });
 
@@ -4772,7 +4775,8 @@
             const c = ccKpisMap[email];
             const pp = parseFloat(getRowValueByKey(r, ['Suma_Total_Productivas', 'Suma Total Productivas']) || NaN);
             if (!isNaN(pp) && pp >= 0) c.pps.push(pp);
-            const qa = parseFloat(getRowValueByKey(r, ['qa_WoW', 'qa_wow', 'QA_WoW', 'QA_wow', 'QA_WOW', 'QA', 'qa_score', 'QA Score', 'Calidad']) || NaN);
+            // QA strictly from qa_WoW (col AZ) only — same rule as the roster builder.
+            const qa = parseFloat(getRowValueByKey(r, ['qa_WoW']) || NaN);
             if (!isNaN(qa) && qa > 0) c.qas.push(qa);
           });
           // Build weekly support/customerCare arrays in the shape the rest of the code expects
