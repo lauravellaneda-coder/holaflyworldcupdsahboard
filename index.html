@@ -5281,12 +5281,22 @@
 
   async function renderGeneralStanding() {
     if (typeof showLoadingModal === 'function') showLoadingModal();
+    // Yield so the browser actually paints the loading modal before the
+    // (synchronous, cached) standings work runs — otherwise show+hide in the
+    // same JS tick makes the modal invisible.
+    await new Promise(resolve => setTimeout(resolve, 30));
+    const startedAt = Date.now();
     try {
       await updateWeeklyStandingsAndRender();
     } catch (err) {
       console.error('[renderGeneralStanding] Error:', err);
     } finally {
-      if (typeof hideLoadingModal === 'function') hideLoadingModal();
+      // Keep the modal visible for at least ~450ms so the loading state is perceivable.
+      const elapsed = Date.now() - startedAt;
+      const remaining = Math.max(0, 450 - elapsed);
+      setTimeout(() => {
+        if (typeof hideLoadingModal === 'function') hideLoadingModal();
+      }, remaining);
     }
   }
 
