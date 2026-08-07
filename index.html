@@ -8,6 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Holafly World Cup 2026</title>
+  <link rel="icon" type="image/svg+xml" href="https://media.holafly.com/public/logos/holafly.svg">
 
   <link href="https://fonts.googleapis.com/css2?family=Mulish:ital,wght@0,300;0,400;0,600;0,700;0,800;0,900;1,700&display=swap" rel="stylesheet">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -5279,7 +5280,14 @@
   }
 
   async function renderGeneralStanding() {
-    await updateWeeklyStandingsAndRender();
+    if (typeof showLoadingModal === 'function') showLoadingModal();
+    try {
+      await updateWeeklyStandingsAndRender();
+    } catch (err) {
+      console.error('[renderGeneralStanding] Error:', err);
+    } finally {
+      if (typeof hideLoadingModal === 'function') hideLoadingModal();
+    }
   }
 
   function openWeeklyDetailModal(teamKey) {
