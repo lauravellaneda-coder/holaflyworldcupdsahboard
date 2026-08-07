@@ -1813,6 +1813,7 @@
   const SHEET_REGISTRATION = 'stg_team_registration';
   const SHEET_SUPPORT = 'stg_kpis_support';
   const SHEET_CC = 'stg_kpis_customer_care';
+  const SHEET_PP_METRICS = 'PP Metrics';
   const SHEET_PCOUNTRY = 'p_country';
   const SHEET_METRICS = 'Metrics';
 
@@ -1985,33 +1986,37 @@
 
   // Fetch all sheets in parallel and build rosters
   async function fetchStandaloneData(startDate, endDate) {
-    console.log('[standalone-data] Fetching 5 sheets from spreadsheet', SPREADSHEET_ID);
+    console.log('[standalone-data] Fetching 6 sheets from spreadsheet', SPREADSHEET_ID);
     console.log('[standalone-data] Date range:', startDate, 'to', endDate);
-    const [regValues, supportValues, ccValues, pCountryValues, metricsValues] = await Promise.all([
+    const [regValues, supportValues, ccValues, pCountryValues, metricsValues, ppMetricsValues] = await Promise.all([
       fetchSheetValues(SHEET_REGISTRATION + '!A:Z'),
       fetchSheetValues(SHEET_SUPPORT + '!A:Z'),
       fetchSheetValues(SHEET_CC + '!A:Z'),
       fetchSheetValues(SHEET_PCOUNTRY + '!A:Z'),
       fetchSheetValues(SHEET_METRICS + '!A:Z'),
+      fetchSheetValues(SHEET_PP_METRICS + '!A:Z'),
     ]);
     const counts = {
       registration: (regValues || []).length,
       support: (supportValues || []).length,
       customerCare: (ccValues || []).length,
       pCountry: (pCountryValues || []).length,
-      metrics: (metricsValues || []).length
+      metrics: (metricsValues || []).length,
+      ppMetrics: (ppMetricsValues || []).length
     };
     console.log('[standalone-data] Raw row counts (incl header):', JSON.stringify(counts));
     if (supportValues && supportValues[0]) {
       console.log('[standalone-data] Support sheet headers:', JSON.stringify(supportValues[0]));
-      console.log('[standalone-data] Support sample row:', JSON.stringify(supportValues[1] || {}));
     }
     if (ccValues && ccValues[0]) {
       console.log('[standalone-data] CC sheet headers:', JSON.stringify(ccValues[0]));
-      console.log('[standalone-data] CC sample row:', JSON.stringify(ccValues[1] || {}));
     }
     if (regValues && regValues[0]) {
       console.log('[standalone-data] Registration sample row:', JSON.stringify(regValues[1] || {}));
+    }
+    if (ppMetricsValues && ppMetricsValues[0]) {
+      console.log('[standalone-data] PP Metrics headers:', JSON.stringify(ppMetricsValues[0]));
+      console.log('[standalone-data] PP Metrics sample row:', JSON.stringify(ppMetricsValues[1] || {}));
     }
 
     const registration = rowsToObjects(regValues);
@@ -2019,13 +2024,15 @@
     const ccRaw = rowsToObjects(ccValues);
     const pCountry = rowsToObjects(pCountryValues);
     const metrics = rowsToObjects(metricsValues);
+    const ppMetricsRaw = rowsToObjects(ppMetricsValues);
 
     console.log('[standalone-data] After rowsToObjects:', JSON.stringify({
       registration: registration.length,
       support: supportRaw.length,
       cc: ccRaw.length,
       pCountry: pCountry.length,
-      metrics: metrics.length
+      metrics: metrics.length,
+      ppMetrics: ppMetricsRaw.length
     }));
 
     // Filter by date range
@@ -2037,42 +2044,48 @@
       const date = getRowValueByKey(r, ['Date', 'date', 'Fecha']);
       return isDateInRange(date, startDate, endDate);
     });
+    let ppMetricsFiltered = ppMetricsRaw.filter(r => {
+      const date = getRowValueByKey(r, ['date', 'Date', 'Fecha', 'fecha']);
+      return isDateInRange(date, startDate, endDate);
+    });
 
     console.log('[standalone-data] After date filter:', JSON.stringify({
       supportIn: supportRaw.length, supportOut: supportFiltered.length,
       ccIn: ccRaw.length, ccOut: ccFiltered.length,
+      ppIn: ppMetricsRaw.length, ppOut: ppMetricsFiltered.length,
       dateRange: startDate + ' → ' + endDate
     }));
 
     // FALLBACK: if date filter excluded everything (timezone/format mismatch),
     // try again with a wider window (last 180 days) so users still see data
-    if (supportRaw.length > 0 && supportFiltered.length === 0) {
-      console.warn('[standalone-data] Date filter excluded all support rows. Falling back to last 180 days.');
+    const widenFilter = (rows, keyNames) => {
       const fallbackEnd = new Date();
       const fallbackStart = new Date();
       fallbackStart.setDate(fallbackStart.getDate() - 180);
       const fmt = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-      supportFiltered = supportRaw.filter(r => {
-        const date = getRowValueByKey(r, ['date_bog', 'Date', 'Fecha', 'date']);
+      return rows.filter(r => {
+        const date = getRowValueByKey(r, keyNames);
         return isDateInRange(date, fmt(fallbackStart), fmt(fallbackEnd));
       });
+    };
+    if (supportRaw.length > 0 && supportFiltered.length === 0) {
+      console.warn('[standalone-data] Date filter excluded all support rows. Falling back to last 180 days.');
+      supportFiltered = widenFilter(supportRaw, ['date_bog', 'Date', 'Fecha', 'date']);
       console.log('[standalone-data] Support fallback (180d) count:', supportFiltered.length);
     }
     if (ccRaw.length > 0 && ccFiltered.length === 0) {
       console.warn('[standalone-data] Date filter excluded all CC rows. Falling back to last 180 days.');
-      const fallbackEnd = new Date();
-      const fallbackStart = new Date();
-      fallbackStart.setDate(fallbackStart.getDate() - 180);
-      const fmt = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-      ccFiltered = ccRaw.filter(r => {
-        const date = getRowValueByKey(r, ['Date', 'date', 'Fecha']);
-        return isDateInRange(date, fmt(fallbackStart), fmt(fallbackEnd));
-      });
+      ccFiltered = widenFilter(ccRaw, ['Date', 'date', 'Fecha']);
       console.log('[standalone-data] CC fallback (180d) count:', ccFiltered.length);
+    }
+    if (ppMetricsRaw.length > 0 && ppMetricsFiltered.length === 0) {
+      console.warn('[standalone-data] Date filter excluded all PP Metrics rows. Falling back to last 180 days.');
+      ppMetricsFiltered = widenFilter(ppMetricsRaw, ['date', 'Date', 'Fecha', 'fecha']);
+      console.log('[standalone-data] PP Metrics fallback (180d) count:', ppMetricsFiltered.length);
     }
 
     // Build the same shape the original code expects
-    return buildStandaloneRosters(registration, supportFiltered, ccFiltered, pCountry, metrics);
+    return buildStandaloneRosters(registration, supportFiltered, ccFiltered, pCountry, metrics, ppMetricsFiltered);
   }
 
   function getRowValueByKey(row, possibleKeys) {
@@ -2086,8 +2099,9 @@
     return '';
   }
 
-  function buildStandaloneRosters(registration, supportRows, ccRows, pCountry, metrics) {
-    // Extract emails
+  function buildStandaloneRosters(registration, supportRows, ccRows, pCountry, metrics, ppMetricsRows) {
+    ppMetricsRows = ppMetricsRows || [];
+    // Extract emails by squad
     const supportEmails = {};
     supportRows.forEach(r => {
       const e = normalizeString(getRowValueByKey(r, ['agent_email', 'Email', 'email', 'Agent Email']));
@@ -2099,44 +2113,52 @@
       if (e && e.indexOf('@') !== -1) ccEmails[e] = true;
     });
 
-    // Aggregate support metrics by email
+    // ── Aggregate Support metrics by email (NEW sheet columns) ──
     const supportKpisMap = {};
     supportRows.forEach(r => {
       const email = normalizeString(getRowValueByKey(r, ['agent_email', 'Email', 'email']));
       if (!email) return;
       if (!supportKpisMap[email]) {
         supportKpisMap[email] = {
-          fcr_successes: [], fcr_successes_total: 0, fcr_closures_total: 0,
-          qa_scores: [], csat_promoters: 0, csat_surveys: 0,
+          chats: 0,
+          close_conversations: 0,
+          csat_promoters: 0, csat_surveys: 0,
+          qa_audits: 0,
           aht_seconds_total: 0, aht_conversations: 0
         };
       }
       const s = supportKpisMap[email];
-      const fcr = parseFloat(getRowValueByKey(r, ['FCR Success', 'fcr_success', 'FCR']));
-      if (!isNaN(fcr) && fcr >= 0) s.fcr_successes.push(fcr);
-      s.fcr_successes_total += parseFloat(getRowValueByKey(r, ['FCR Success', 'fcr_success']) || 0);
-      s.fcr_closures_total += parseFloat(getRowValueByKey(r, ['fcr_closures', 'FCR Closures']) || 0);
-      const qa = parseFloat(getRowValueByKey(r, ['QI Score', 'qa_score', 'QA Score', 'QA']));
-      if (!isNaN(qa) && qa > 0) s.qa_scores.push(qa);
-      s.csat_promoters += parseFloat(getRowValueByKey(r, ['CSAT Promoter', 'csat_promoters']) || 0);
-      s.csat_surveys += parseFloat(getRowValueByKey(r, ['CSAT Service', 'csat_surveys']) || 0);
-      s.aht_seconds_total += parseFloat(getRowValueByKey(r, ['aht_seconds_total', 'act_seconds_total']) || 0);
-      s.aht_conversations += parseFloat(getRowValueByKey(r, ['aht_conversations', 'act_conversations']) || 0);
+      s.chats += parseFloat(getRowValueByKey(r, ['chats', 'Chats']) || 0);
+      s.close_conversations += parseFloat(getRowValueByKey(r, ['close_conversations', 'FCR Closures', 'fcr_closures']) || 0);
+      s.csat_promoters += parseFloat(getRowValueByKey(r, ['csat_promoters', 'CSAT Promoter', 'CSAT Promoters']) || 0);
+      s.csat_surveys += parseFloat(getRowValueByKey(r, ['csat_surveys', 'CSAT Service', 'CSAT Surveys']) || 0);
+      s.qa_audits += parseFloat(getRowValueByKey(r, ['qa_audits', 'QI Score', 'qa_score', 'QA Score', 'QA']) || 0);
+      // AHT: prefer aht_* but fall back to act_* when source renamed columns (post-2026-06-29)
+      let ahtSec = parseFloat(getRowValueByKey(r, ['aht_seconds_total']) || 0);
+      if (!ahtSec) ahtSec = parseFloat(getRowValueByKey(r, ['act_seconds_total']) || 0);
+      s.aht_seconds_total += ahtSec;
+      let ahtConv = parseFloat(getRowValueByKey(r, ['aht_conversations']) || 0);
+      if (!ahtConv) ahtConv = parseFloat(getRowValueByKey(r, ['act_conversations']) || 0);
+      s.aht_conversations += ahtConv;
     });
 
-    // Aggregate CC metrics by email
-    const ccKpisMap = {};
-    ccRows.forEach(r => {
-      const email = normalizeString(getRowValueByKey(r, ['Analyst email', 'Email', 'email']));
-      if (!email) return;
-      if (!ccKpisMap[email]) ccKpisMap[email] = { pps: [], qas: [] };
-      const pp = parseFloat(getRowValueByKey(r, ['Suma_Total_Productivas', 'Suma Total Productivas', 'PP']));
-      if (!isNaN(pp) && pp >= 0) ccKpisMap[email].pps.push(pp);
-      const qa = parseFloat(getRowValueByKey(r, ['qa_WoW', 'qa_wow', 'QA_WoW', 'QA', 'qa_score', 'QA Score', 'Calidad']));
-      if (!isNaN(qa) && qa > 0) ccKpisMap[email].qas.push(qa);
+    // ── Aggregate PP Metrics by email (NEW PP Metrics tab) ──
+    const ppByEmail = {};
+    ppMetricsRows.forEach(r => {
+      const email = normalizeString(getRowValueByKey(r, ['Email', 'email', 'agent_email', 'Analyst Email']));
+      if (!email || email.indexOf('@') === -1) return;
+      const total = parseFloat(getRowValueByKey(r, ['total', 'Total', 'PP', 'Puntos', 'puntos']) || 0);
+      if (!isNaN(total) && total >= 0) {
+        ppByEmail[email] = (ppByEmail[email] || 0) + total;
+      }
     });
+    console.log('[standalone-data] PP metrics aggregated:', JSON.stringify({
+      uniqueEmails: Object.keys(ppByEmail).length,
+      sampleEmails: Object.keys(ppByEmail).slice(0, 5),
+      sampleValues: Object.entries(ppByEmail).slice(0, 5)
+    }));
 
-    // Build rosters from registration
+    // ── Build rosters from registration (source of truth for who participates) ──
     const support = [];
     const customerCare = [];
     registration.forEach(r => {
@@ -2155,9 +2177,7 @@
       }
 
       if (isCC) {
-        const ccKpis = ccKpisMap[email];
-        const totalPP = ccKpis ? ccKpis.pps.reduce((a,b)=>a+b, 0) : 0;
-        const avgQA = ccKpis && ccKpis.qas.length > 0 ? ccKpis.qas.reduce((a,b)=>a+b, 0) / ccKpis.qas.length : 0;
+        const totalPP = ppByEmail[email] || 0;
         customerCare.push({
           'Assigned COuntry': country,
           'Department': 'Customer Care',
@@ -2165,17 +2185,19 @@
           'Email': email,
           'Team Leader': tl,
           'Total PP': totalPP,
-          'QA': avgQA,
+          'QA': 0,
           'Performance Score': totalPP
         });
       } else {
         const sk = supportKpisMap[email];
-        let avgFCR = 0, avgQA = 0, avgCSAT = 0;
+        let avgFCR = 0, avgCSAT = 0, avgAHT = 0, totalChats = 0, totalQA = 0;
         if (sk) {
-          if (sk.fcr_closures_total > 0) avgFCR = sk.fcr_successes_total / sk.fcr_closures_total;
-          else if (sk.fcr_successes.length > 0) avgFCR = sk.fcr_successes.reduce((a,b)=>a+b, 0) / sk.fcr_successes.length;
-          if (sk.qa_scores.length > 0) avgQA = sk.qa_scores.reduce((a,b)=>a+b, 0) / sk.qa_scores.length;
+          // FCR: derived from close_conversations / chats (no FCR Success column anymore)
+          if (sk.chats > 0) avgFCR = sk.close_conversations / sk.chats;
           if (sk.csat_surveys > 0) avgCSAT = sk.csat_promoters / sk.csat_surveys;
+          if (sk.aht_conversations > 0) avgAHT = sk.aht_seconds_total / sk.aht_conversations;
+          totalChats = sk.chats;
+          totalQA = sk.qa_audits;
         }
         support.push({
           'Assigned COuntry': country,
@@ -2184,14 +2206,16 @@
           'Email': email,
           'Team Leader': tl,
           'FCR': avgFCR,
-          'QA': avgQA,
+          'QA': totalQA,           // qa_audits count (no score column anymore)
           'CSAT': avgCSAT,
+          'AHT': avgAHT,
+          'Chats': totalChats,
           'Performance Score': avgFCR
         });
       }
     });
 
-    // Build pointsByTeam from pCountry
+    // ── Build pointsByTeam from pCountry ──
     const pointsByTeam = {};
     pCountry.forEach(r => {
       const tl = getRowValueByKey(r, ['Team Leader', 'Leader', 'TL']);
@@ -2202,7 +2226,13 @@
       pointsByTeam[key] = (pointsByTeam[key] || 0) + pts;
     });
 
-    // Current week start (Monday)
+    console.log('[standalone-data] Rosters built:', JSON.stringify({
+      supportAgents: support.length,
+      ccAgents: customerCare.length,
+      ppEmails: Object.keys(ppByEmail).length
+    }));
+
+    // ── Current week start (Monday) ──
     const today = new Date();
     const day = today.getDay();
     const diff = today.getDate() - day + (day === 0 ? -6 : 1);
