@@ -2013,7 +2013,11 @@
   // Safe fetch: returns [] on error so one bad sheet doesn't break the whole flow
   async function safeFetchSheet(sheetName, label) {
     try {
-      const result = await fetchSheetValues(sheetName + '!A:Z');
+      // Range widened from A:Z (26 cols) to A:BA (53 cols) because:
+      // - stg_kpis_support has 33 cols (qa_score at col 28, fcr_closures/success at 29-30)
+      // - stg_kpis_customer_care has 45 cols (Analyst email at 41, QA at 42, Suma_Total_Productivas at 34)
+      // A:Z silently truncated those columns → every metric was 0.
+      const result = await fetchSheetValues(sheetName + '!A:BA');
       return { ok: true, data: result, label: label, sheet: sheetName };
     } catch (err) {
       console.warn('[standalone-data] Sheet "' + sheetName + '" (' + label + ') failed:', err && err.message ? err.message : err);
