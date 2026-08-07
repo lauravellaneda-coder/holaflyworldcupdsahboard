@@ -2182,7 +2182,8 @@
     });
     let ccFiltered = ccRaw.filter(r => {
       const date = getRowValueByKey(r, ['Date', 'date', 'Fecha']);
-      return isDateInRange(date, startDate, endDate);
+      // stg_kpis_customer_care exports MM/DD/YYYY (same as PP Metrics), NOT DMY.
+      return isDateInRangeMDY(date, startDate, endDate);
     });
     let ppMetricsFiltered = ppMetricsRaw.filter(r => {
       const date = getRowValueByKey(r, ['date', 'Date', 'Fecha', 'fecha']);
@@ -2205,14 +2206,15 @@
 
     // FALLBACK: if date filter excluded everything (timezone/format mismatch),
     // try again with a wider window (last 180 days) so users still see data
-    const widenFilter = (rows, keyNames) => {
+    const widenFilter = (rows, keyNames, useMDY = false) => {
       const fallbackEnd = new Date();
       const fallbackStart = new Date();
       fallbackStart.setDate(fallbackStart.getDate() - 180);
       const fmt = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      const inRange = useMDY ? isDateInRangeMDY : isDateInRange;
       return rows.filter(r => {
         const date = getRowValueByKey(r, keyNames);
-        return isDateInRange(date, fmt(fallbackStart), fmt(fallbackEnd));
+        return inRange(date, fmt(fallbackStart), fmt(fallbackEnd));
       });
     };
     if (supportRaw.length > 0 && supportFiltered.length === 0) {
@@ -2222,7 +2224,7 @@
     }
     if (ccRaw.length > 0 && ccFiltered.length === 0) {
       console.warn('[standalone-data] Date filter excluded all CC rows. Falling back to last 180 days.');
-      ccFiltered = widenFilter(ccRaw, ['Date', 'date', 'Fecha']);
+      ccFiltered = widenFilter(ccRaw, ['Date', 'date', 'Fecha'], true);
       console.log('[standalone-data] CC fallback (180d) count:', ccFiltered.length);
     }
     if (ppMetricsRaw.length > 0 && ppMetricsFiltered.length === 0) {
@@ -4710,7 +4712,8 @@
           });
           const weekCC = rawCache.customerCare.filter(r => {
             const d = getRowValueByKey(r, ['Date', 'date', 'Fecha']);
-            return isDateInRange(d, week.start, week.end);
+            // stg_kpis_customer_care is MM/DD/YYYY — must use the MDY range parser.
+            return isDateInRangeMDY(d, week.start, week.end);
           });
           const weekPP = rawCache.ppMetrics.filter(r => {
             const d = getRowValueByKey(r, ['date', 'Date', 'Fecha', 'fecha']);
