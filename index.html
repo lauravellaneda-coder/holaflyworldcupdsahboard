@@ -2378,22 +2378,23 @@
 
       s.chats += parseFloat(getRowValueByKey(r, ['chats', 'Chats']) || 0);
 
-      const surveysVal = parseFloat(getRowValueByKey(r, ['CSAT Service', 'csat_surveys', 'csat_service', 'CSAT Surveys']) || 0);
+      // CSAT: strictly csat_promoters (col N) / csat_surveys (col P) — no fallbacks
+      const surveysVal = parseFloat(getRowValueByKey(r, ['csat_surveys']) || 0);
       if (!isNaN(surveysVal) && surveysVal > 0) {
-        const promotersVal = parseFloat(getRowValueByKey(r, ['CSAT Promoter', 'csat_promoters', 'csat_promoter', 'CSAT Promoters']) || 0);
+        const promotersVal = parseFloat(getRowValueByKey(r, ['csat_promoters']) || 0);
         s.csat_promoters += promotersVal;
         s.csat_surveys += surveysVal;
       }
 
-      // QA: try old column names (QI Score, QA Score) first, then fall back to qa_audits (count)
-      const qa = parseFloat(getRowValueByKey(r, ['QI Score', 'qa_score', 'QA Score', 'QA']) || NaN);
+      // QA: strictly qa_score (col AA) — no fallbacks
+      const qa = parseFloat(getRowValueByKey(r, ['qa_score']) || NaN);
       if (!isNaN(qa) && qa > 0) s.qa_scores.push(qa);
 
-      // FCR: try old column names first, then derive from close_conversations/chats
-      const fcr = parseFloat(getRowValueByKey(r, ['FCR Success', 'fcr_success', 'FCR']) || NaN);
+      // FCR: strictly fcr_success (col AC) / fcr_closures (col AB)
+      const fcr = parseFloat(getRowValueByKey(r, ['fcr_success']) || NaN);
       if (!isNaN(fcr) && fcr >= 0) s.fcr_successes.push(fcr);
-      s.fcr_successes_total += parseFloat(getRowValueByKey(r, ['FCR Success', 'fcr_success']) || 0);
-      s.fcr_closures_total += parseFloat(getRowValueByKey(r, ['fcr_closures', 'FCR Closures', 'close_conversations']) || 0);
+      s.fcr_successes_total += parseFloat(getRowValueByKey(r, ['fcr_success']) || 0);
+      s.fcr_closures_total += parseFloat(getRowValueByKey(r, ['fcr_closures']) || 0);
 
       // AHT: prefer aht_* (and fallback to act_* per code.gs line 369-371)
       const aht = parseFloat(getRowValueByKey(r, ['aht_seconds_total', 'AHT', 'AHT Seconds']) || NaN);
@@ -4748,17 +4749,20 @@
             }
             const s = supportKpisMap[email];
             s.chats += parseFloat(getRowValueByKey(r, ['chats', 'Chats']) || 0);
-            const surveysVal = parseFloat(getRowValueByKey(r, ['CSAT Service', 'csat_surveys', 'csat_service', 'CSAT Surveys']) || 0);
+            // CSAT: strictly csat_promoters (col N) / csat_surveys (col P) — no fallbacks
+            const surveysVal = parseFloat(getRowValueByKey(r, ['csat_surveys']) || 0);
             if (!isNaN(surveysVal) && surveysVal > 0) {
-              s.csat_promoters += parseFloat(getRowValueByKey(r, ['CSAT Promoter', 'csat_promoters', 'csat_promoter', 'CSAT Promoters']) || 0);
+              s.csat_promoters += parseFloat(getRowValueByKey(r, ['csat_promoters']) || 0);
               s.csat_surveys += surveysVal;
             }
-            const qa = parseFloat(getRowValueByKey(r, ['QI Score', 'qa_score', 'QA Score', 'QA']) || NaN);
+            // QA: strictly qa_score (col AA) — no fallbacks
+            const qa = parseFloat(getRowValueByKey(r, ['qa_score']) || NaN);
             if (!isNaN(qa) && qa > 0) s.qa_scores.push(qa);
-            const fcr = parseFloat(getRowValueByKey(r, ['FCR Success', 'fcr_success', 'FCR']) || NaN);
+            // FCR: strictly fcr_success (col AC) / fcr_closures (col AB)
+            const fcr = parseFloat(getRowValueByKey(r, ['fcr_success']) || NaN);
             if (!isNaN(fcr) && fcr >= 0) s.fcr_successes.push(fcr);
-            s.fcr_successes_total += parseFloat(getRowValueByKey(r, ['FCR Success', 'fcr_success']) || 0);
-            s.fcr_closures_total += parseFloat(getRowValueByKey(r, ['fcr_closures', 'FCR Closures', 'close_conversations']) || 0);
+            s.fcr_successes_total += parseFloat(getRowValueByKey(r, ['fcr_success']) || 0);
+            s.fcr_closures_total += parseFloat(getRowValueByKey(r, ['fcr_closures']) || 0);
             const aht = parseFloat(getRowValueByKey(r, ['aht_seconds_total', 'AHT', 'AHT Seconds']) || NaN);
             if (!isNaN(aht) && aht >= 0) s.aht_totals.push(aht);
             let ahtSecondsVal = parseFloat(getRowValueByKey(r, ['aht_seconds_total']) || 0);
