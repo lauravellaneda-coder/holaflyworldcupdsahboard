@@ -2149,59 +2149,121 @@
   function buildStandaloneRosters(registration, supportRows, ccRows, pCountry, metrics, ppMetricsRows, goalsRows) {
     ppMetricsRows = ppMetricsRows || [];
     goalsRows = goalsRows || [];
-    // Extract emails by squad
-    const supportEmails = {};
+
+    // ── Build email sets (same logic as code.gs `extractEmailsFromSheet`) ──
+    const supportEmailsSet = {};
     supportRows.forEach(r => {
-      const e = normalizeString(getRowValueByKey(r, ['agent_email', 'Email', 'email', 'Agent Email']));
-      if (e && e.indexOf('@') !== -1) supportEmails[e] = true;
+      const e = getRowEmail(r);
+      if (e) supportEmailsSet[e] = true;
     });
-    const ccEmails = {};
+    const ccEmailsSet = {};
     ccRows.forEach(r => {
-      const e = normalizeString(getRowValueByKey(r, ['Analyst email', 'Email', 'email', 'Agent Email']));
-      if (e && e.indexOf('@') !== -1) ccEmails[e] = true;
+      const e = getRowEmail(r);
+      if (e) ccEmailsSet[e] = true;
     });
-    // PP Metrics is the source of truth for who is CC (CC sheet no longer has email column)
+    // PP Metrics is the new source of truth for CC (CC sheet lost its email column)
     const ppMetricEmails = {};
     ppMetricsRows.forEach(r => {
-      const e = normalizeString(getRowValueByKey(r, ['email', 'Email', 'agent_email']));
-      if (e && e.indexOf('@') !== -1) ppMetricEmails[e] = true;
+      const e = getRowEmail(r);
+      if (e) ppMetricEmails[e] = true;
     });
-    console.log('[standalone-data] ppMetricEmails count (CC identifier):', Object.keys(ppMetricEmails).length);
 
-    // ── Aggregate Support metrics by email (NEW sheet columns) ──
+    // ── Build rosterNameMap (for name→email lookup fallback) ──
+    const rosterNameMap = {};
+    registration.forEach(r => {
+      const email = getRowEmail(r);
+      const name = getRowAgentName(r);
+      if (email && name) rosterNameMap[normalizeString(name)] = email;
+    });
+
+    // ── Build TL votes from email presence (same as code.gs `tlVotes`) ──
+    const tlVotes = {};
+    registration.forEach(r => {
+      const email = getRowEmail(r);
+      const tl = getRowTeamLeader(r);
+      if (!email || !tl) return;
+      const tlNorm = normalizeString(tl);
+      if (!tlVotes[tlNorm]) tlVotes[tlNorm] = { support: 0, cc: 0 };
+      // PP metrics wins for CC determination
+      if (ppMetricEmails[email]) tlVotes[tlNorm].cc++;
+      else if (ccEmailsSet[email]) tlVotes[tlNorm].cc++;
+      else if (supportEmailsSet[email]) tlVotes[tlNorm].support++;
+    });
+
+    // ── Build tlDeptMap from votes (same logic as code.gs) ──
+    const tlDeptMap = {};
+    Object.keys(tlVotes).forEach(tlNorm => {
+      const v = tlVotes[tlNorm];
+      if (v.cc > v.support) tlDeptMap[tlNorm] = "Customer Care";
+      else if (v.support > v.cc) tlDeptMap[tlNorm] = "Support";
+      else if (v.cc > 0) tlDeptMap[tlNorm] = "Customer Care";
+    });
+
+    console.log('[standalone-data] Email sets:', JSON.stringify({
+      supportEmails: Object.keys(supportEmailsSet).length,
+      ccEmails: Object.keys(ccEmailsSet).length,
+      ppMetricEmails: Object.keys(ppMetricEmails).length,
+      tlDeptMapEntries: Object.keys(tlDeptMap).length
+    }));
+
+    // ── Aggregate Support metrics by email (mirrors code (22).gs lines 273-330) ──
     const supportKpisMap = {};
     supportRows.forEach(r => {
-      const email = normalizeString(getRowValueByKey(r, ['agent_email', 'Email', 'email']));
+      let email = getRowEmail(r);
+      if (!email) {
+        // Fallback: lookup by analyst name
+        const name = getRowAgentName(r);
+        if (name && rosterNameMap[normalizeString(name)]) {
+          email = rosterNameMap[normalizeString(name)];
+        }
+      }
       if (!email) return;
       if (!supportKpisMap[email]) {
         supportKpisMap[email] = {
           chats: 0,
-          close_conversations: 0,
           csat_promoters: 0, csat_surveys: 0,
-          qa_audits: 0,
-          aht_seconds_total: 0, aht_conversations: 0
+          qa_scores: [], fcr_successes: [],
+          fcr_successes_total: 0, fcr_closures_total: 0,
+          aht_totals: [], aht_seconds_total: 0, aht_conversations: 0
         };
       }
       const s = supportKpisMap[email];
+
       s.chats += parseFloat(getRowValueByKey(r, ['chats', 'Chats']) || 0);
-      s.close_conversations += parseFloat(getRowValueByKey(r, ['close_conversations', 'FCR Closures', 'fcr_closures']) || 0);
-      s.csat_promoters += parseFloat(getRowValueByKey(r, ['csat_promoters', 'CSAT Promoter', 'CSAT Promoters']) || 0);
-      s.csat_surveys += parseFloat(getRowValueByKey(r, ['csat_surveys', 'CSAT Service', 'CSAT Surveys']) || 0);
-      s.qa_audits += parseFloat(getRowValueByKey(r, ['qa_audits', 'QI Score', 'qa_score', 'QA Score', 'QA']) || 0);
-      // AHT: prefer aht_* but fall back to act_* when source renamed columns (post-2026-06-29)
-      let ahtSec = parseFloat(getRowValueByKey(r, ['aht_seconds_total']) || 0);
-      if (!ahtSec) ahtSec = parseFloat(getRowValueByKey(r, ['act_seconds_total']) || 0);
-      s.aht_seconds_total += ahtSec;
-      let ahtConv = parseFloat(getRowValueByKey(r, ['aht_conversations']) || 0);
-      if (!ahtConv) ahtConv = parseFloat(getRowValueByKey(r, ['act_conversations']) || 0);
-      s.aht_conversations += ahtConv;
+
+      const surveysVal = parseFloat(getRowValueByKey(r, ['CSAT Service', 'csat_surveys', 'csat_service', 'CSAT Surveys']) || 0);
+      if (!isNaN(surveysVal) && surveysVal > 0) {
+        const promotersVal = parseFloat(getRowValueByKey(r, ['CSAT Promoter', 'csat_promoters', 'csat_promoter', 'CSAT Promoters']) || 0);
+        s.csat_promoters += promotersVal;
+        s.csat_surveys += surveysVal;
+      }
+
+      // QA: try old column names (QI Score, QA Score) first, then fall back to qa_audits (count)
+      const qa = parseFloat(getRowValueByKey(r, ['QI Score', 'qa_score', 'QA Score', 'QA']) || NaN);
+      if (!isNaN(qa) && qa > 0) s.qa_scores.push(qa);
+
+      // FCR: try old column names first, then derive from close_conversations/chats
+      const fcr = parseFloat(getRowValueByKey(r, ['FCR Success', 'fcr_success', 'FCR']) || NaN);
+      if (!isNaN(fcr) && fcr >= 0) s.fcr_successes.push(fcr);
+      s.fcr_successes_total += parseFloat(getRowValueByKey(r, ['FCR Success', 'fcr_success']) || 0);
+      s.fcr_closures_total += parseFloat(getRowValueByKey(r, ['fcr_closures', 'FCR Closures', 'close_conversations']) || 0);
+
+      // AHT: prefer aht_* (and fallback to act_* per code.gs line 369-371)
+      const aht = parseFloat(getRowValueByKey(r, ['aht_seconds_total', 'AHT', 'AHT Seconds']) || NaN);
+      if (!isNaN(aht) && aht >= 0) s.aht_totals.push(aht);
+      let ahtSecondsVal = parseFloat(getRowValueByKey(r, ['aht_seconds_total']) || 0);
+      if (!ahtSecondsVal) ahtSecondsVal = parseFloat(getRowValueByKey(r, ['act_seconds_total']) || 0);
+      s.aht_seconds_total += ahtSecondsVal;
+      let ahtConversationsVal = parseFloat(getRowValueByKey(r, ['aht_conversations']) || 0);
+      if (!ahtConversationsVal) ahtConversationsVal = parseFloat(getRowValueByKey(r, ['act_conversations']) || 0);
+      s.aht_conversations += ahtConversationsVal;
     });
 
-    // ── Aggregate PP Metrics by email (NEW PP Metrics tab) ──
+    // ── Aggregate PP Metrics by email (NEW PP Metrics tab — replaces old Suma_Total_Productivas) ──
     const ppByEmail = {};
     ppMetricsRows.forEach(r => {
-      const email = normalizeString(getRowValueByKey(r, ['Email', 'email', 'agent_email', 'Analyst Email']));
-      if (!email || email.indexOf('@') === -1) return;
+      const email = getRowEmail(r);
+      if (!email) return;
       const total = parseFloat(getRowValueByKey(r, ['total', 'Total', 'PP', 'Puntos', 'puntos']) || 0);
       if (!isNaN(total) && total >= 0) {
         ppByEmail[email] = (ppByEmail[email] || 0) + total;
@@ -2209,31 +2271,61 @@
     });
     console.log('[standalone-data] PP metrics aggregated:', JSON.stringify({
       uniqueEmails: Object.keys(ppByEmail).length,
-      sampleEmails: Object.keys(ppByEmail).slice(0, 5),
-      sampleValues: Object.entries(ppByEmail).slice(0, 5)
+      sample: Object.entries(ppByEmail).slice(0, 3)
     }));
 
-    // ── Build rosters from registration (source of truth for who participates) ──
+    // ── Aggregate CC metrics by email (mirrors code (22).gs lines 332-359) ──
+    const ccKpisMap = {};
+    ccRows.forEach(r => {
+      let email = getRowEmail(r);
+      if (!email) {
+        const name = getRowAgentName(r);
+        if (name && rosterNameMap[normalizeString(name)]) {
+          email = rosterNameMap[normalizeString(name)];
+        }
+      }
+      if (!email) return;
+      if (!ccKpisMap[email]) ccKpisMap[email] = { pps: [], qas: [] };
+      const c = ccKpisMap[email];
+
+      // PP from old column (kept for backward compat — current sheet has it empty)
+      const pp = parseFloat(getRowValueByKey(r, ['Suma_Total_Productivas', 'Suma Total Productivas']) || NaN);
+      if (!isNaN(pp) && pp >= 0) c.pps.push(pp);
+
+      const qa = parseFloat(getRowValueByKey(r, ['qa_WoW', 'qa_wow', 'QA_WoW', 'QA_wow', 'QA_WOW', 'QA', 'qa_score', 'QA Score', 'Calidad']) || NaN);
+      if (!isNaN(qa) && qa > 0) c.qas.push(qa);
+    });
+
+    // ── Build rosters from registration (mirrors code (22).gs lines 361-455) ──
     const support = [];
     const customerCare = [];
     registration.forEach(r => {
-      const email = normalizeString(getRowValueByKey(r, ['Agent Email', 'Email', 'email']));
+      const email = getRowEmail(r);
       if (!email) return;
-      const name = getRowValueByKey(r, ['Agent Name', 'Analyst', 'Name', 'nombre', 'Identifier']) || 'Unknown';
-      const country = getRowValueByKey(r, ['Country', 'Pais', 'pais']) || 'Unknown';
-      const tl = getRowValueByKey(r, ['Team Lead / Coordinator', 'Team Leader', 'Leader', 'TL']) || 'TL';
+      const name = getRowAgentName(r) || "Unknown Agent";
+      const country = getRowCountry(r) || "Unknown";
+      const tl = getRowTeamLeader(r) || "TL";
 
       let isCC = false;
-      if (ppMetricEmails[email]) isCC = true;        // PP Metrics is CC-only → strongest signal
-      else if (ccEmails[email]) isCC = true;
-      else if (supportEmails[email]) isCC = false;
+      const tlNorm = normalizeString(tl);
+
+      // isCC determination: ppMetric > ccEmailsSet > supportEmailsSet > tlDeptMap > Department column
+      if (ppMetricEmails[email]) isCC = true;
+      else if (ccEmailsSet[email]) isCC = true;
+      else if (supportEmailsSet[email]) isCC = false;
+      else if (tlDeptMap[tlNorm]) isCC = (tlDeptMap[tlNorm] === "Customer Care");
       else {
-        const dept = getRowValueByKey(r, ['Department', 'Departamento', 'Squad', 'Equipo']);
-        if (dept && normalizeString(dept).indexOf('care') !== -1) isCC = true;
+        const dept = getRowValueByKey(r, ["Department", "Departamento", "Squad", "Equipo"]);
+        if (dept && dept.toLowerCase().indexOf("care") !== -1) isCC = true;
       }
 
       if (isCC) {
-        const totalPP = ppByEmail[email] || 0;
+        // PP from PP Metrics tab (new) + Suma_Total_Productivas from CC sheet (old fallback)
+        const ppFromMetrics = ppByEmail[email] || 0;
+        const ccKpis = ccKpisMap[email];
+        const ppFromSheet = ccKpis && ccKpis.pps.length > 0 ? ccKpis.pps.reduce((a,b)=>a+b, 0) : 0;
+        const totalPP = ppFromMetrics + ppFromSheet;
+        const avgQA = ccKpis && ccKpis.qas.length > 0 ? ccKpis.qas.reduce((a,b)=>a+b, 0) / ccKpis.qas.length : 0;
         customerCare.push({
           'Assigned COuntry': country,
           'Department': 'Customer Care',
@@ -2241,19 +2333,19 @@
           'Email': email,
           'Team Leader': tl,
           'Total PP': totalPP,
-          'QA': 0,
+          'QA': avgQA,
           'Performance Score': totalPP
         });
       } else {
         const sk = supportKpisMap[email];
-        let avgFCR = 0, avgCSAT = 0, avgAHT = 0, totalChats = 0, totalQA = 0;
+        let avgFCR = 0, avgQA = 0, avgCSAT = 0, avgAHT = 0;
         if (sk) {
-          // FCR: derived from close_conversations / chats (no FCR Success column anymore)
-          if (sk.chats > 0) avgFCR = sk.close_conversations / sk.chats;
+          if (sk.fcr_closures_total > 0) avgFCR = sk.fcr_successes_total / sk.fcr_closures_total;
+          else if (sk.fcr_successes.length > 0) avgFCR = sk.fcr_successes.reduce((a,b)=>a+b, 0) / sk.fcr_successes.length;
+          if (sk.qa_scores.length > 0) avgQA = sk.qa_scores.reduce((a,b)=>a+b, 0) / sk.qa_scores.length;
           if (sk.csat_surveys > 0) avgCSAT = sk.csat_promoters / sk.csat_surveys;
           if (sk.aht_conversations > 0) avgAHT = sk.aht_seconds_total / sk.aht_conversations;
-          totalChats = sk.chats;
-          totalQA = sk.qa_audits;
+          else if (sk.aht_totals.length > 0) avgAHT = sk.aht_totals.reduce((a,b)=>a+b, 0) / sk.aht_totals.length;
         }
         support.push({
           'Assigned COuntry': country,
@@ -2262,38 +2354,42 @@
           'Email': email,
           'Team Leader': tl,
           'FCR': avgFCR,
-          'QA': totalQA,           // qa_audits count (no score column anymore)
+          'QA': avgQA,
           'CSAT': avgCSAT,
           'AHT': avgAHT,
-          'Chats': totalChats,
+          'Chats': sk ? sk.chats : 0,
           'Performance Score': avgFCR
         });
       }
     });
 
-    // ── Build pointsByTeam from pCountry ──
+    // ── Build pointsByTeam from pCountry (using tlDeptMap, mirrors code (22).gs) ──
     const pointsByTeam = {};
     pCountry.forEach(r => {
-      const tl = getRowValueByKey(r, ['Team Leader', 'Leader', 'TL']);
-      const country = getRowValueByKey(r, ['Country', 'Pais']);
-      const pts = parseFloat(getRowValueByKey(r, ['points', 'Points', 'puntos']) || 0);
-      if (!country || isNaN(pts)) return;
-      const key = country + '_Support';
+      const tl = getRowTeamLeader(r);
+      const country = getRowCountry(r);
+      const pts = parseFloat(getRowValueByKey(r, ['points', 'Points', 'puntos', 'Puntos']) || 0);
+      if (!tl || !country || isNaN(pts)) return;
+      const dept = tlDeptMap[normalizeString(tl)] || 'Support';
+      const key = country + '_' + dept;
       pointsByTeam[key] = (pointsByTeam[key] || 0) + pts;
     });
 
-    // ── Build manualGoalsByTeam from goals sheet ──
+    // ── Build manualGoalsByTeam from goals sheet (using tlDeptMap, mirrors code (22).gs) ──
     const manualGoalsByTeam = {};
     goalsRows.forEach(r => {
-      const country = getRowValueByKey(r, ['Country', 'Pais', 'country']);
-      const tl = getRowValueByKey(r, ['Team Leader', 'Leader', 'TL', 'team leader']);
+      const tl = getRowTeamLeader(r);
+      const country = getRowCountry(r);
       const goalsVal = parseFloat(getRowValueByKey(r, ['goals', 'Goals', 'goles', 'Goles']) || 0);
       if (!country || isNaN(goalsVal)) return;
-      // Department inference: by TL vote map or default Support
+
       let dept = 'Support';
-      // Try to detect department from a column
-      const deptVal = getRowValueByKey(r, ['Department', 'Departamento', 'Squad', 'Equipo', 'department']);
-      if (deptVal && normalizeString(deptVal).indexOf('care') !== -1) dept = 'Customer Care';
+      if (tl) {
+        dept = tlDeptMap[normalizeString(tl)] || 'Support';
+      } else {
+        const deptVal = getRowValueByKey(r, ['Department', 'Departamento', 'Squad', 'Equipo']);
+        if (deptVal && deptVal.toLowerCase().indexOf('care') !== -1) dept = 'Customer Care';
+      }
       const key = country + '_' + dept;
       manualGoalsByTeam[key] = (manualGoalsByTeam[key] || 0) + goalsVal;
     });
