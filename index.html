@@ -1174,7 +1174,7 @@
                 style="width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--bg); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s; padding: 0;"
                 onmouseover="if(!this.classList.contains('has-new')){this.style.borderColor='var(--gold)';this.style.background='var(--bg-off)';}"
                 onmouseout="if(!this.classList.contains('has-new')){this.style.borderColor='var(--line)';this.style.background='var(--bg)';}">
-          <span id="global-refresh-icon" style="font-size: 15px; line-height: 1; transition: transform 0.4s;">🔄</span>
+          <span id="global-refresh-icon" style="font-size: 15px; line-height: 1; transition: transform 0.4s;">↻</span>
         </button>
         <span id="refresh-new-dot"
               style="position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #16a34a; border: 2px solid var(--bg-off); display: none; pointer-events: none; box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7); animation: refresh-pulse 1.5s infinite;"></span>
@@ -1196,7 +1196,6 @@
     </div>
     <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
       <div style="display: flex; align-items: center; gap: 10px;">
-        <span style="font-size: 16px;">📅</span>
         <span style="font-weight: 800; font-size: 13.5px; color: var(--ink); text-transform: uppercase; letter-spacing: 0.5px;">Date Range:</span>
       </div>
       <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
@@ -1273,7 +1272,7 @@
           </tr>
         </thead>
         <tbody id="global-standing-table">
-          <tr class="empty-row"><td colspan="5"><span class="empty-ico">⚽</span>Loading live stats…</td></tr>
+          <tr class="empty-row"><td colspan="5">Loading live stats…</td></tr>
         </tbody>
       </table>
     </div>
@@ -1331,7 +1330,7 @@
           </tr>
         </thead>
         <tbody id="support-team-table">
-          <tr class="empty-row"><td colspan="5"><span class="empty-ico">🔍</span>Select a country to view the squad roster.</td></tr>
+          <tr class="empty-row"><td colspan="5">Select a country to view the squad roster.</td></tr>
         </tbody>
       </table>
     </div>
@@ -1394,10 +1393,11 @@
           </tr>
         </thead>
         <tbody id="cc-team-table">
-          <tr class="empty-row"><td colspan="5"><span class="empty-ico">🔍</span>Select a country to view the squad roster.</td></tr>
+          <tr class="empty-row"><td colspan="5">Select a country to view the squad roster.</td></tr>
         </tbody>
       </table>
     </div>
+  </div>
     <!-- CC Pagination Controls -->
     <div id="cc-pagination" class="pagination-container" style="display: none;">
       <button class="pag-btn" id="cc-prev-btn" onclick="changeCCPage(-1)">Previous</button>
@@ -1416,12 +1416,12 @@
 
 <!-- ═══════ DESIGN EDITOR UI PANEL ═══════ -->
 <button id="design-editor-toggle" onclick="toggleDesignEditor()">
-  <span style="font-size: 16px;">🎨</span> Design Editor
+  <span style="font-size: 16px;">◈</span> Design Editor
 </button>
 
 <div id="design-editor-sidebar">
   <div class="editor-header">
-    <h3>🎨 Design Panel</h3>
+    <h3>Design Panel</h3>
     <button class="editor-close-btn" onclick="toggleDesignEditor()">×</button>
   </div>
   
@@ -1440,7 +1440,7 @@
       <div class="editor-group">
         <label class="editor-label">Upload Local Image</label>
         <button class="editor-btn" onclick="document.getElementById('design-upload-file').click()">
-          📁 Load Local Image
+          Load Local Image
         </button>
         <input type="file" id="design-upload-file" accept="image/*" style="display: none;" onchange="handleLocalFileUpload(event)">
       </div>
@@ -1462,7 +1462,7 @@
           </div>
         </div>
         <p style="font-size: 11.5px; color: var(--muted); margin: 0; line-height: 1.4;">
-          💡 Click a loaded image in the list or select it on screen to edit it.
+          Click a loaded image in the list or select it on screen to edit it.
         </p>
       </div>
     </div>
@@ -1470,7 +1470,7 @@
     <!-- Tab 2: Selected Image Settings -->
     <div id="editor-sec-adjust" class="editor-section">
       <div id="no-image-selected-notice" class="editor-notice">
-        ⚠️ Select an image from the "Images" tab or click one on the screen to adjust its position, size, and layer.
+        Select an image from the "Images" tab or click one on the screen to adjust its position, size, and layer.
       </div>
       
       <div id="image-adjust-controls" style="display: none;">
@@ -1563,7 +1563,7 @@
         
         <div class="editor-group" style="margin-top: 30px; display: flex; gap: 10px;">
           <button class="editor-btn secondary" style="flex:1" onclick="deselectImage()">Deselect</button>
-          <button class="editor-btn danger" style="width: auto; padding: 0 14px;" onclick="handleDeleteImage(selectedImageId)">🗑️</button>
+          <button class="editor-btn danger" style="width: auto; padding: 0 14px;" onclick="handleDeleteImage(selectedImageId)">✕</button>
         </div>
       </div>
     </div>
@@ -1571,7 +1571,7 @@
     <!-- Tab 3: Header Layout Settings -->
     <div id="editor-sec-header" class="editor-section">
       <div class="editor-group">
-        <label class="editor-label" style="color: #ffffff; margin-bottom: 15px;">📐 Header Settings</label>
+        <label class="editor-label" style="color: #ffffff; margin-bottom: 15px;">Header Settings</label>
       </div>
 
       <div class="editor-group">
@@ -1649,7 +1649,7 @@
     <!-- Tab 4: Metrics Configurator -->
     <div id="editor-sec-metrics" class="editor-section">
       <div class="editor-group">
-        <label class="editor-label" style="color: #ffffff; margin-bottom: 15px;">📊 Manage Metrics</label>
+        <label class="editor-label" style="color: #ffffff; margin-bottom: 15px;">Manage Metrics</label>
       </div>
 
       <div class="editor-group">
@@ -1668,7 +1668,7 @@
       </div>
 
       <div class="editor-group" style="border-top: 1px solid rgba(232, 236, 242, 0.08); padding-top: 15px; margin-top: 15px;">
-        <label class="editor-label" style="color: #ffffff; margin-bottom: 10px;">🗓️ Weekly Rotation</label>
+        <label class="editor-label" style="color: #ffffff; margin-bottom: 10px;">Weekly Rotation</label>
         <div class="editor-group" style="margin-bottom: 8px;">
           <div style="display: flex; align-items: center; gap: 8px;">
             <span style="font-size: 11px; color: var(--muted2); font-weight: 700;">Current Active Week:</span>
@@ -1676,7 +1676,7 @@
           </div>
         </div>
         <button class="editor-btn" onclick="handleNewWeek()">
-          ➕ Start New Week
+          Start New Week
         </button>
         <p style="font-size: 11.5px; color: var(--muted); margin-top: 6px; line-height: 1.4;">
           Duplicates the active week's metrics to next Monday. Adjust targets/weights after duplication.
@@ -1684,7 +1684,7 @@
       </div>
 
       <div class="editor-group" style="border-top: 1px solid rgba(232, 236, 242, 0.08); padding-top: 15px;">
-        <label class="editor-label" style="color: #ffffff; margin-bottom: 10px;">➕ Add New Metric</label>
+        <label class="editor-label" style="color: #ffffff; margin-bottom: 10px;">Add New Metric</label>
         
         <div class="editor-group">
           <label class="editor-label">Metric Name (e.g. QA, FCR, CSAT, AHT)</label>
@@ -1706,7 +1706,7 @@
           <label class="editor-label" style="color: var(--coral); margin-bottom: 12px; font-size: 11.5px;">Sub-metrics of FCR & CSAT</label>
           
           <div style="margin-bottom: 12px; border-bottom: 1px solid rgba(232, 236, 242, 0.1); padding-bottom: 10px;">
-            <span style="font-size: 12.5px; font-weight: 700; color: #ffffff; display: block; margin-bottom: 8px;">📊 FCR (First Contact Resolution)</span>
+            <span style="font-size: 12.5px; font-weight: 700; color: #ffffff; display: block; margin-bottom: 8px;">FCR (First Contact Resolution)</span>
             <div style="display: flex; gap: 8px;">
               <div style="flex: 1;">
                 <label style="font-size: 10px; color: var(--muted2); font-weight: 700; display: block; margin-bottom: 4px;">WEIGHT (%)</label>
@@ -1720,7 +1720,7 @@
           </div>
 
           <div>
-            <span style="font-size: 12.5px; font-weight: 700; color: #ffffff; display: block; margin-bottom: 8px;">📊 CSAT (Customer Satisfaction)</span>
+            <span style="font-size: 12.5px; font-weight: 700; color: #ffffff; display: block; margin-bottom: 8px;">CSAT (Customer Satisfaction)</span>
             <div style="display: flex; gap: 8px;">
               <div style="flex: 1;">
                 <label style="font-size: 10px; color: var(--muted2); font-weight: 700; display: block; margin-bottom: 4px;">WEIGHT (%)</label>
@@ -1763,21 +1763,21 @@
         <label class="editor-label">Link Google Sheets (Web App URL)</label>
         <input type="text" id="live-sheet-url" class="editor-input" placeholder="https://script.google.com/macros/s/.../exec" style="margin-bottom: 8px;">
         <button class="editor-btn" onclick="saveLiveSheetUrl()">
-          🔗 Link Live Sheet
+          Link Live Sheet
         </button>
       </div>
 
       <div class="editor-group">
         <label class="editor-label">Save Changes</label>
         <button class="editor-btn" onclick="saveDesignData(true)">
-          💾 Save Design Locally
+          Save Design Locally
         </button>
       </div>
 
       <div class="editor-group">
         <label class="editor-label">Export Configuration</label>
         <button class="editor-btn secondary" onclick="exportDesignData()">
-          📤 Export to JSON File
+          Export to JSON File
         </button>
         <p style="font-size: 11.5px; color: var(--muted); margin-top: 6px; line-height: 1.4;">
           Download a file containing all your positioned images to load them in another browser.
@@ -1787,7 +1787,7 @@
       <div class="editor-group">
         <label class="editor-label">Import Configuration</label>
         <button class="editor-btn secondary" onclick="document.getElementById('design-import-file').click()">
-          📥 Import from JSON File
+          Import from JSON File
         </button>
         <input type="file" id="design-import-file" accept=".json" style="display: none;" onchange="importDesignData(event)">
       </div>
@@ -1795,7 +1795,7 @@
       <div class="editor-group" style="margin-top: 40px; border-top: 1px solid rgba(232, 236, 242, 0.1); padding-top: 20px;">
         <label class="editor-label" style="color: #ef4444;">Dangerous Actions</label>
         <button class="editor-btn danger" onclick="handleClearAllDesign()">
-          🗑️ Delete All Design
+          Delete All Design
         </button>
       </div>
     </div>
@@ -2803,7 +2803,7 @@
   }
 
   function getCountryData(rawName) {
-    if (!rawName) return { name: 'Unknown', flag: '🌍' };
+    if (!rawName) return { name: 'Unknown', flag: '' };
     const norm = normalizeString(rawName);
     
     let iso = COUNTRY_TO_ISO[norm];
@@ -2821,7 +2821,7 @@
     
     const clean = rawName.trim();
     const capitalized = clean.charAt(0).toUpperCase() + clean.slice(1);
-    return { name: capitalized, flag: '🌍' };
+    return { name: capitalized, flag: '' };
   }
 
   function getRowTeamLeader(row, defaultTL) {
@@ -3104,7 +3104,7 @@
       : null);
 
     if (!baseUrl) {
-      showCustomConfirm?.('No live sheet URL configured. Connect to a deployment to use global refresh.', '⚠️', () => {});
+      showCustomConfirm?.('No live sheet URL configured. Connect to a deployment to use global refresh.', '⚠', () => {});
       btn.classList.remove('spinning');
       return;
     }
@@ -3164,7 +3164,7 @@
   // Custom modals replacing native alert/confirm
   function showCustomConfirm(message, icon, onConfirm) {
     const overlay = document.getElementById('custom-modal-overlay');
-    document.getElementById('custom-modal-icon').textContent = icon || '⚠️';
+    document.getElementById('custom-modal-icon').textContent = icon || '⚠';
     document.getElementById('custom-modal-title').textContent = 'Confirmation';
     document.getElementById('custom-modal-message').textContent = message;
     
@@ -3194,7 +3194,7 @@
 
   function showCustomAlert(message, icon) {
     const overlay = document.getElementById('custom-modal-overlay');
-    document.getElementById('custom-modal-icon').textContent = icon || 'ℹ️';
+    document.getElementById('custom-modal-icon').textContent = icon || 'ℹ';
     document.getElementById('custom-modal-title').textContent = 'Notification';
     document.getElementById('custom-modal-message').textContent = message;
     
@@ -3383,15 +3383,15 @@
     const unit = unitInput.value;
 
     if (!name) {
-      showCustomAlert('Please enter a metric name.', '⚠️');
+      showCustomAlert('Please enter a metric name.', '⚠');
       return;
     }
     if (isNaN(weight) || weight < 0 || weight > 100) {
-      showCustomAlert('Weight must be a number between 0 and 100.', '⚠️');
+      showCustomAlert('Weight must be a number between 0 and 100.', '⚠');
       return;
     }
     if (isNaN(target)) {
-      showCustomAlert('Please enter a valid numeric target.', '⚠️');
+      showCustomAlert('Please enter a valid numeric target.', '⚠');
       return;
     }
 
@@ -3417,11 +3417,11 @@
           const sm2Target = parseFloat(document.getElementById('submetric2-target').value);
 
           if (isNaN(sm1Weight) || isNaN(sm2Weight) || sm1Weight + sm2Weight !== weight) {
-            showCustomAlert(`The sum of sub-metric weights (${sm1Weight || 0} + ${sm2Weight || 0} = ${(sm1Weight || 0) + (sm2Weight || 0)}) must equal the combined metric total weight (${weight}).`, '⚠️');
+            showCustomAlert(`The sum of sub-metric weights (${sm1Weight || 0} + ${sm2Weight || 0} = ${(sm1Weight || 0) + (sm2Weight || 0)}) must equal the combined metric total weight (${weight}).`, '⚠');
             return;
           }
           if (isNaN(sm1Target) || isNaN(sm2Target)) {
-            showCustomAlert('Please enter valid numeric targets for the sub-metrics.', '⚠️');
+            showCustomAlert('Please enter valid numeric targets for the sub-metrics.', '⚠');
             return;
           }
 
@@ -3438,7 +3438,7 @@
       if (submetricsGroup) {
         submetricsGroup.style.display = 'none';
       }
-      showCustomAlert('Metric updated successfully.', '✅');
+      showCustomAlert('Metric updated successfully.', '✓');
     } else {
       const newMetric = {
         id: name.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now(),
@@ -3453,7 +3453,7 @@
       } else {
         metricsConfig.customerCare.push(newMetric);
       }
-      showCustomAlert('Metric added successfully.', '✅');
+      showCustomAlert('Metric added successfully.', '✓');
     }
 
     saveMetricsConfig();
@@ -3514,7 +3514,7 @@
   }
 
   function handleDeleteMetric(squad, id) {
-    showCustomConfirm('Are you sure you want to delete this metric?', '🗑️', () => {
+    showCustomConfirm('Are you sure you want to delete this metric?', '✕', () => {
       if (squad === 'support') {
         metricsConfig.support = metricsConfig.support.filter(m => m.id !== id);
       } else {
@@ -3528,7 +3528,7 @@
       filterSupportTeam();
       filterCCTeam();
       
-      showCustomAlert('Metric deleted successfully.', '🗑️');
+      showCustomAlert('Metric deleted successfully.', '✕');
     });
   }
 
@@ -3582,8 +3582,8 @@
           <span style="font-size: 11px; color: var(--muted2);">${details}</span>
         </div>
         <div style="display: flex; gap: 4px; flex-shrink: 0;">
-          <button class="editor-image-delete" style="color: var(--muted2); font-size: 12px; padding: 4px;" onclick="event.stopPropagation(); startEditMetric('${squad}', '${m.id}')">✏️</button>
-          <button class="editor-image-delete" style="font-size: 12px; padding: 4px;" onclick="event.stopPropagation(); handleDeleteMetric('${squad}', '${m.id}')">🗑️</button>
+          <button class="editor-image-delete" style="color: var(--muted2); font-size: 12px; padding: 4px;" onclick="event.stopPropagation(); startEditMetric('${squad}', '${m.id}')">✎</button>
+          <button class="editor-image-delete" style="font-size: 12px; padding: 4px;" onclick="event.stopPropagation(); handleDeleteMetric('${squad}', '${m.id}')">✕</button>
         </div>
       `;
       container.appendChild(item);
@@ -3615,7 +3615,7 @@
     const active = getCurrentActiveMetricsConfig();
 
     if (active.support.length === 0 && active.customerCare.length === 0) {
-      showCustomAlert('There are no active metrics to duplicate. Add at least one metric first.', '⚠️');
+      showCustomAlert('There are no active metrics to duplicate. Add at least one metric first.', '⚠');
       return;
     }
 
@@ -3655,7 +3655,7 @@
     filterSupportTeam();
     filterCCTeam();
 
-    showCustomAlert(`✅ Created ${newSupport.length + newCC.length} new metric rules for week of ${nextMonday}.\n\nTo activate them, change the global date range to start on or after ${nextMonday}.`, '🎉');
+    showCustomAlert(`Created ${newSupport.length + newCC.length} new metric rules for week of ${nextMonday}.\n\nTo activate them, change the global date range to start on or after ${nextMonday}.`, '✓');
   }
 
   // Cheatcode sequential keypress listener to toggle editor mode
@@ -3735,7 +3735,7 @@
     localStorage.setItem('holafly_design_editor_enabled', 'true');
     const toggleBtn = document.getElementById('design-editor-toggle');
     if (toggleBtn) toggleBtn.style.display = 'flex';
-    console.log('🎨 Design editor enabled in this browser.');
+    console.log('Design editor enabled in this browser.');
   };
 
   window.disableDesignEditor = function() {
@@ -3743,18 +3743,18 @@
     const toggleBtn = document.getElementById('design-editor-toggle');
     if (toggleBtn) toggleBtn.style.display = 'none';
     if (isDesignEditorOpen) toggleDesignEditor();
-    console.log('🎨 Design editor disabled.');
+    console.log('Design editor disabled.');
   };
 
   function saveLiveSheetUrl() {
     const url = document.getElementById('live-sheet-url').value.trim();
     if (url === "") {
       localStorage.removeItem('holafly_live_sheet_url');
-      showCustomAlert('Sheet link removed. Using default source.', 'ℹ️');
+      showCustomAlert('Sheet link removed. Using default source.', 'ℹ');
       return;
     }
     localStorage.setItem('holafly_live_sheet_url', url);
-    showCustomAlert('Google Sheets URL linked successfully. Loading data...', '✅');
+    showCustomAlert('Google Sheets URL linked successfully. Loading data...', '✓');
     fetchHistoricalDataAndCalculate(() => {
       loadLiveSheetData();
     });
@@ -3884,7 +3884,7 @@
       .catch(err => {
         console.error('Error fetching live sheet data:', err);
         hideLoadingModal();
-        showCustomAlert('Error connecting to live Google Sheets. Verify your Web App URL and permissions.', '❌');
+        showCustomAlert('Error connecting to live Google Sheets. Verify your Web App URL and permissions.', '✕');
         if (onFailure) onFailure(err);
       });
   }
@@ -3967,7 +3967,7 @@
   function handleLoadingError(err) {
     console.error(err);
     document.getElementById("global-standing-table").innerHTML =
-      `<tr class="err-row"><td colspan="5">⚠️ Error loading metrics. Please verify that your spreadsheet source columns have valid text and data headers.</td></tr>`;
+      `<tr class="err-row"><td colspan="5">Error loading metrics. Please verify that your spreadsheet source columns have valid text and data headers.</td></tr>`;
   }
 
   async function initializeDashboard(data) {
@@ -4611,7 +4611,7 @@
   async   function updateWeeklyStandingsAndRender() {
     const tbody = document.getElementById("global-standing-table");
     if (tbody) {
-      tbody.innerHTML = `<tr class="empty-row"><td colspan="5"><span class="empty-ico">⚽</span>Calculating weekly statistics...</td></tr>`;
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="5">Calculating weekly statistics...</td></tr>`;
     }
 
     const startInput = document.getElementById('global-start-date');
@@ -4631,10 +4631,10 @@
         : `Weeks: ${firstWeek.start} → ${lastWeek.start}`;
       if (!portal1HeroLabel.dataset.weekBadge) {
         portal1HeroLabel.dataset.weekBadge = '1';
-        portal1HeroLabel.innerHTML += ` &nbsp;·&nbsp; <span style="color: rgba(255,255,255,.7); font-weight: 800;">📅 ${weekBadge}</span>`;
+        portal1HeroLabel.innerHTML += ` &nbsp;·&nbsp; <span style="color: rgba(255,255,255,.7); font-weight: 800;">${weekBadge}</span>`;
       } else {
         portal1HeroLabel.innerHTML = portal1HeroLabel.innerHTML.replace(/&nbsp;·&nbsp; <span.*?<\/span>/, '');
-        portal1HeroLabel.innerHTML += ` &nbsp;·&nbsp; <span style="color: rgba(255,255,255,.7); font-weight: 800;">📅 ${weekBadge}</span>`;
+        portal1HeroLabel.innerHTML += ` &nbsp;·&nbsp; <span style="color: rgba(255,255,255,.7); font-weight: 800;">${weekBadge}</span>`;
       }
     }
     
@@ -5211,13 +5211,13 @@
     tbody.innerHTML = "";
     
     if (finalTeams.length === 0) {
-      tbody.innerHTML = `<tr class="empty-row"><td colspan="5"><span class="empty-ico">⚽</span>No active tournament records found.</td></tr>`;
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="5">No active tournament records found.</td></tr>`;
       return;
     }
     
     finalTeams.forEach((t, i) => {
       let rank = i + 1;
-      let medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : rank + "°";
+      let medal = rank + "°";
       let rankCls = rank === 1 ? "r1" : rank === 2 ? "r2" : rank === 3 ? "r3" : "";
       let fillCls = rank === 1 ? "p1" : rank === 2 ? "p2" : (rank === 3 ? "p3" : "");
       
@@ -5256,7 +5256,7 @@
         <td><div class="rank-wrap ${rankCls}">${medal}</div></td>
         <td>
           <span class="country-cell">${t.flag} ${t.country}</span>
-          <span class="dept-tag ${deptCls}" style="margin-left: 8px;">💼 ${t.dept}</span>
+          <span class="dept-tag ${deptCls}" style="margin-left: 8px;">${t.dept}</span>
         </td>
         <td>
           <div class="prog-wrap" style="width: 100%; flex-direction: column; align-items: stretch; gap: 6px;">
@@ -5266,10 +5266,10 @@
             <div class="prog-track" style="width: 100%; flex: none;"><div class="prog-fill ${fillCls}" style="width:${Math.min(t.overallAvgPerformance, 100)}%"></div></div>
           </div>
         </td>
-        <td><span style="font-weight: 700; color: var(--gold);">🏆 ${t.points} Pts</span></td>
+        <td><span style="font-weight: 700; color: var(--gold);">${t.points} Pts</span></td>
         <td style="position: relative; overflow: visible;">
-          <span class="goals-chip ${chipCls}">⚽ ${t.goals} Goals</span>
-          ${(t.weeklyPerformances && t.weeklyPerformances.length > 0) ? `<button onclick="openWeeklyDetailModal('${teamDetailKey.replace(/'/g, "\\'")}')" title="View weekly breakdown" style="background: transparent; border: 1.5px solid var(--line); border-radius: 20px; color: var(--muted); font-size: 11px; font-weight: 800; padding: 4px 10px; margin-left: 6px; cursor: pointer; font-family: inherit; transition: all 0.15s;" onmouseover="this.style.borderColor='var(--coral)';this.style.color='var(--coral)'" onmouseout="this.style.borderColor='var(--line)';this.style.color='var(--muted)'">📅 Weeks</button>` : ''}
+          <span class="goals-chip ${chipCls}">${t.goals} Goals</span>
+          ${(t.weeklyPerformances && t.weeklyPerformances.length > 0) ? `<button onclick="openWeeklyDetailModal('${teamDetailKey.replace(/'/g, "\\'")}')" title="View weekly breakdown" style="background: transparent; border: 1.5px solid var(--line); border-radius: 20px; color: var(--muted); font-size: 11px; font-weight: 800; padding: 4px 10px; margin-left: 6px; cursor: pointer; font-family: inherit; transition: all 0.15s;" onmouseover="this.style.borderColor='var(--coral)';this.style.color='var(--coral)'" onmouseout="this.style.borderColor='var(--line)';this.style.color='var(--muted)'">Weeks</button>` : ''}
         </td>
       </tr>`;
     });
@@ -5332,13 +5332,13 @@
       return;
     }
     document.getElementById('weekly-detail-title').textContent = `${data.flag} ${data.country} · ${data.dept}`;
-    document.getElementById('weekly-detail-sub').innerHTML = `🏆 <strong style="color: var(--gold);">${data.points} Pts</strong> &nbsp;·&nbsp; ⚽ <strong style="color: var(--coral);">${data.goals} Goals</strong> &nbsp;·&nbsp; ${data.weekly.length} week${data.weekly.length !== 1 ? 's' : ''}`;
+    document.getElementById('weekly-detail-sub').innerHTML = `<strong style="color: var(--gold);">${data.points} Pts</strong> &nbsp;·&nbsp; <strong style="color: var(--coral);">${data.goals} Goals</strong> &nbsp;·&nbsp; ${data.weekly.length} week${data.weekly.length !== 1 ? 's' : ''}`;
     const rowsHtml = data.weekly.map(w => {
       const displayText = w.display && w.display.displayString ? w.display.displayString : w.val.toFixed(1) + '%';
-      const pointsText = w.goals > 0 ? `<span style="color: var(--green); font-weight: 800;">+${w.goals} ⚽</span>` : `<span style="color: var(--muted2);">0</span>`;
+      const pointsText = w.goals > 0 ? `<span style="color: var(--green); font-weight: 800;">+${w.goals}</span>` : `<span style="color: var(--muted2);">0</span>`;
       const isLocked = w.goals > 0;
       return `<tr style="border-bottom: 1px solid rgba(232, 236, 242, 0.08);">
-        <td style="padding: 10px; font-weight: 700; color: #ffffff;">📅 ${w.week}</td>
+        <td style="padding: 10px; font-weight: 700; color: #ffffff;">${w.week}</td>
         <td style="padding: 10px; text-align: right; color: rgba(255,255,255,.85);">${displayText}</td>
         <td style="padding: 10px; text-align: right;">${pointsText}${!isLocked ? ' <span style="font-size: 11px; color: var(--muted2);">(locked)</span>' : ''}</td>
       </tr>`;
@@ -5455,7 +5455,7 @@
       if (heroHeading && heroSub) {
         heroHeading.textContent = "Weekly Metric: " + metricObj.name + " Tracker";
         const activeWeek = getCurrentActiveMetricsConfig().weekStart;
-        heroSub.innerHTML = `Official Targets: <strong>FCR &ge; ${fcrSub.target}% | CSAT &ge; ${csatSub.target}%</strong> &nbsp;·&nbsp; Tournament Weight: <strong>${weightPct}</strong> &nbsp;·&nbsp; <span style="color: rgba(255,255,255,.7);">📅 Week of ${activeWeek}</span>`;
+        heroSub.innerHTML = `Official Targets: <strong>FCR &ge; ${fcrSub.target}% | CSAT &ge; ${csatSub.target}%</strong> &nbsp;·&nbsp; Tournament Weight: <strong>${weightPct}</strong> &nbsp;·&nbsp; <span style="color: rgba(255,255,255,.7);">Week of ${activeWeek}</span>`;
       }
       
       document.getElementById("support-metric-col-title").textContent = "Actual FCR & CSAT";
@@ -5469,7 +5469,7 @@
       if (heroHeading && heroSub) {
         heroHeading.textContent = "Weekly Metric: " + metricObj.name + " Tracker";
         const activeWeek = getCurrentActiveMetricsConfig().weekStart;
-        heroSub.innerHTML = `Official Target: <strong>&ge; ${targetThreshold}${unit}</strong> &nbsp;·&nbsp; Tournament Weight: <strong>${weightPct}</strong> &nbsp;·&nbsp; <span style="color: rgba(255,255,255,.7);">📅 Week of ${activeWeek}</span>`;
+        heroSub.innerHTML = `Official Target: <strong>&ge; ${targetThreshold}${unit}</strong> &nbsp;·&nbsp; Tournament Weight: <strong>${weightPct}</strong> &nbsp;·&nbsp; <span style="color: rgba(255,255,255,.7);">Week of ${activeWeek}</span>`;
       }
       
       document.getElementById("support-metric-col-title").textContent = colTitle;
@@ -5477,7 +5477,7 @@
     }
 
     if (!sel && !selectedTL && !searchVal) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="5"><span class="empty-ico">🔍</span>Select a country, a Team Leader, or search by name to view the squad roster.</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Select a country, a Team Leader, or search by name to view the squad roster.</td></tr>';
       const pagDiv = document.getElementById("support-pagination");
       if (pagDiv) pagDiv.style.display = "none";
       return;
@@ -5511,7 +5511,7 @@
     }
     
     if (matchedRows.length === 0) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="5"><span class="empty-ico">🌍</span>No agents found for this selection.</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No agents found for this selection.</td></tr>';
       const pagDiv = document.getElementById("support-pagination");
       if (pagDiv) pagDiv.style.display = "none";
       return;
@@ -5569,8 +5569,8 @@
         const fcrText = !isNaN(valFCR) ? `${valFCR.toFixed(1)}%` : '—';
         const csatText = !isNaN(valCSAT) ? `${valCSAT.toFixed(1)}%` : '—';
         
-        const fcrStatus = !isNaN(valFCR) ? (okFCR ? '<span class="status-pill ok">FCR: 🏆</span>' : '<span class="status-pill running">FCR: ⚽</span>') : '';
-        const csatStatus = !isNaN(valCSAT) ? (okCSAT ? '<span class="status-pill ok">CSAT: 🏆</span>' : '<span class="status-pill running">CSAT: ⚽</span>') : '';
+        const fcrStatus = !isNaN(valFCR) ? (okFCR ? '<span class="status-pill ok">FCR: Target</span>' : '<span class="status-pill running">FCR: In progress</span>') : '';
+        const csatStatus = !isNaN(valCSAT) ? (okCSAT ? '<span class="status-pill ok">CSAT: Target</span>' : '<span class="status-pill running">CSAT: In progress</span>') : '';
         
         const tlDisplayFCR = (rowTL && rowTL !== 'TL' && rowTL !== 'TL Support Default') ? rowTL : 'Sin asignar';
         tbody.innerHTML += `<tr>
@@ -5602,7 +5602,7 @@
         tbody.innerHTML += `<tr>
           <td><span class="agent-name">${agent} <span style="font-size:11px; color:var(--muted); font-weight:normal;">(${tlDisplaySingle})</span></span></td>
           <td><span class="score-num">${scoreText}</span></td>
-          <td><span class="status-pill ${ok ? 'ok' : 'running'}">${ok ? '🏆 Target Achieved' : '⚽ In Competition'}</span></td>
+          <td><span class="status-pill ${ok ? 'ok' : 'running'}">${ok ? 'Target Achieved' : 'In Competition'}</span></td>
           <td><span class="contrib-num">${contrib.toFixed(1)}%</span> <span class="contrib-of">/ ${weightPct}</span></td>
           <td>—</td>
         </tr>`;
@@ -5663,7 +5663,7 @@
     const avgFCRVal = countFCR > 0 ? totalFCR / countFCR : NaN;
     const avgCSATVal = countCSAT > 0 ? totalCSAT / countCSAT : NaN;
     const avgGenericVal = countGeneric > 0 ? totalGeneric / countGeneric : NaN;
-    const totalPointsHtml = teamPts > 0 ? `<span style="font-weight: 800; color: var(--gold);">🏆 ${teamPts} Pts</span>` : '—';
+    const totalPointsHtml = teamPts > 0 ? `<span style="font-weight: 800; color: var(--gold);">${teamPts} Pts</span>` : '—';
 
     if (metricObj.isCombined) {
       const fcrText = !isNaN(avgFCRVal) ? `${avgFCRVal.toFixed(1)}%` : '—';
@@ -5753,14 +5753,14 @@
       if (isPP && numWeeks > 1) {
         targetDisplay = `&ge; ${targetThreshold}${unit} (${metricObj.target}/week)`;
       }
-      heroSub.innerHTML = `Official Target: <strong>${targetDisplay}</strong> &nbsp;·&nbsp; Tournament Weight: <strong>${weightPct}</strong> &nbsp;·&nbsp; <span style="color: rgba(255,255,255,.7);">📅 Week of ${activeWeek}</span>`;
+      heroSub.innerHTML = `Official Target: <strong>${targetDisplay}</strong> &nbsp;·&nbsp; Tournament Weight: <strong>${weightPct}</strong> &nbsp;·&nbsp; <span style="color: rgba(255,255,255,.7);">Week of ${activeWeek}</span>`;
     }
     
     document.getElementById("cc-metric-col-title").textContent = colTitle;
     document.getElementById("cc-contrib-col-title").textContent = contribTitle;
 
     if (!sel && !selectedTL && !searchVal) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="5"><span class="empty-ico">🔍</span>Select a country, a Team Leader, or search by name to view the squad roster.</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Select a country, a Team Leader, or search by name to view the squad roster.</td></tr>';
       const pagDiv = document.getElementById("cc-pagination");
       if (pagDiv) pagDiv.style.display = "none";
       return;
@@ -5813,7 +5813,7 @@
     }
     
     if (displayItems.length === 0) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="5"><span class="empty-ico">🌍</span>No analysts found for this selection.</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No analysts found for this selection.</td></tr>';
       const pagDiv = document.getElementById("cc-pagination");
       if (pagDiv) pagDiv.style.display = "none";
       return;
@@ -5839,7 +5839,7 @@
     const teamCountry = firstRow ? getCountryData(firstRow['Assigned COuntry']).name : '';
     const ccTeamKey = `${teamCountry}_Customer Care`;
     const ccTeamPts = teamPointsMap[ccTeamKey] || 0;
-    const ccPointsHtml = ccTeamPts > 0 ? `<span style="font-weight: 700; color: var(--gold);">🏆 ${ccTeamPts} Pts</span>` : '—';
+    const ccPointsHtml = ccTeamPts > 0 ? `<span style="font-weight: 700; color: var(--gold);">${ccTeamPts} Pts</span>` : '—';
 
     const startIdx = (ccCurrentPage - 1) * itemsPerPage;
     const pageItems = displayItems.slice(startIdx, startIdx + itemsPerPage);
@@ -5872,7 +5872,7 @@
       tbody.innerHTML += `<tr>
         <td><span class="agent-name">${analyst} <span style="font-size:11px; color:var(--muted); font-weight:normal;">(${tlDisplayCC})</span></span></td>
         <td><span class="score-num">${scoreText}</span></td>
-        <td><span class="status-pill ${ok ? 'ok' : 'running'}">${ok ? '🏆 Target Achieved' : '⚽ In Competition'}</span></td>
+        <td><span class="status-pill ${ok ? 'ok' : 'running'}">${ok ? 'Target Achieved' : 'In Competition'}</span></td>
         <td><span class="contrib-num">${contrib.toFixed(1)}%</span> <span class="contrib-of">/ ${weightPct}</span></td>
         <td>—</td>
       </tr>`;
@@ -6065,7 +6065,7 @@
 
   // Clear all design data
   function handleClearAllDesign() {
-    if (confirm('⚠️ Are you completely sure you want to delete ALL design and restore the original page? This action is irreversible.')) {
+    if (confirm('Are you completely sure you want to delete ALL design and restore the original page? This action is irreversible.')) {
       designImages = [];
       deselectImage();
       saveDesignData();
@@ -6438,7 +6438,7 @@
       item.innerHTML = `
         <img class="editor-image-thumb" src="${img.src}" alt="">
         <span class="editor-image-name">${img.name}</span>
-        <button class="editor-image-delete" onclick="event.stopPropagation(); handleDeleteImage('${img.id}')">🗑️</button>
+        <button class="editor-image-delete" onclick="event.stopPropagation(); handleDeleteImage('${img.id}')">✕</button>
       `;
       
       listContainer.appendChild(item);
@@ -6631,9 +6631,9 @@
   }
 </script>
 <!-- Custom Modal Dialog matching dashboard aesthetics -->
-<div id="custom-modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(17, 22, 37, 0.75); backdrop-filter: blur(5px); z-index: 11000; align-items: center; justify-content: center;">
+<div id="custom-modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(17, 22, 37, 0.85); z-index: 11000; align-items: center; justify-content: center;">
   <div style="background: rgba(17, 22, 37, 0.96); border: 2px solid var(--coral-mid); border-radius: var(--r-lg); padding: 30px; max-width: 400px; width: 90%; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); text-align: center; color: #ffffff; font-family: 'Mulish', sans-serif; animation: fadeUp 0.2s ease;">
-    <div id="custom-modal-icon" style="font-size: 40px; margin-bottom: 15px;">⚠️</div>
+    <div id="custom-modal-icon" style="font-size: 40px; margin-bottom: 15px;">⚠</div>
     <h4 id="custom-modal-title" style="font-weight: 800; font-size: 18px; margin-bottom: 12px; color: #ffffff;">Confirmation</h4>
     <p id="custom-modal-message" style="font-size: 14px; color: var(--muted2); line-height: 1.5; margin-bottom: 24px;">Do you want to perform this action?</p>
     <div style="display: flex; gap: 12px; justify-content: center;">
@@ -6644,7 +6644,7 @@
 </div>
 
 <!-- Loading Modal Dialog matching dashboard aesthetics -->
-<div id="loading-modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(17, 22, 37, 0.85); backdrop-filter: blur(8px); z-index: 12000; align-items: center; justify-content: center; font-family: 'Mulish', sans-serif;">
+<div id="loading-modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(17, 22, 37, 0.85); z-index: 12000; align-items: center; justify-content: center; font-family: 'Mulish', sans-serif;">
   <div style="background: rgba(22, 28, 45, 0.98); border: 2px solid #ff5a5f; border-radius: 20px; padding: 40px; max-width: 420px; width: 90%; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); text-align: center; color: #ffffff; animation: fadeUp 0.3s ease;">
     <style>
       @keyframes spin {
@@ -6660,19 +6660,17 @@
     <div style="position: relative; width: 80px; height: 80px; margin: 0 auto 24px auto; display: flex; align-items: center; justify-content: center;">
       <!-- Outer spinning border -->
       <div style="position: absolute; width: 100%; height: 100%; border: 4px solid rgba(255, 90, 95, 0.1); border-top: 4px solid #ff5a5f; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-      <!-- Holafly flight icon / paper plane or similar SVG or emoji representing flight/volando -->
-      <div style="font-size: 32px; animation: pulse 1.5s ease-in-out infinite;">✈️</div>
+      <div style="position: absolute; width: 26px; height: 26px; border-radius: 50%; background: #ff5a5f;"></div>
     </div>
     <h4 style="font-weight: 800; font-size: 22px; margin-bottom: 12px; color: #ffffff; letter-spacing: -0.5px;">Loading information...</h4>
     <p style="font-size: 15px; color: #a4b3d6; line-height: 1.6; margin: 0; padding: 0 10px;">
-      Information is flying like Holafly ✈️ <br>
-      <span style="font-size: 13px; color: #ff5a5f; font-weight: 600; opacity: 0.9; display: inline-block; margin-top: 8px;">Sorry for the delay</span>
+      Please wait a moment while we prepare your data.
     </p>
   </div>
 </div>
 
 <!-- Weekly Points Detail Modal (centered, dashboard style) -->
-<div id="weekly-detail-modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(17, 22, 37, 0.75); backdrop-filter: blur(5px); z-index: 11500; align-items: center; justify-content: center; font-family: 'Mulish', sans-serif;">
+<div id="weekly-detail-modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(17, 22, 37, 0.85); z-index: 11500; align-items: center; justify-content: center; font-family: 'Mulish', sans-serif;">
   <div style="position: relative; background: rgba(22, 28, 45, 0.98); border: 2px solid var(--coral-mid); border-radius: var(--r-lg); padding: 28px 30px; max-width: 560px; width: 92%; max-height: 85vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); color: #ffffff; animation: fadeUp 0.2s ease;">
     <button onclick="closeWeeklyDetailModal()" style="position: absolute; top: 12px; right: 16px; background: transparent; border: none; color: var(--muted2); font-size: 24px; line-height: 1; cursor: pointer; font-family: inherit;">×</button>
     <div style="font-size: 11px; font-weight: 800; letter-spacing: 2.5px; text-transform: uppercase; color: var(--coral); margin-bottom: 8px;">Weekly Breakdown</div>
@@ -6735,7 +6733,7 @@
   </div>
 
   <p style="margin-top:24px; font-size:12px; color:var(--muted); max-width:480px; text-align:center;">
-    🔒 Read-only access to the Holafly World Cup spreadsheet. The dashboard cannot modify any data.
+    Read-only access to the Holafly World Cup spreadsheet. The dashboard cannot modify any data.
   </p>
 </div>
 
