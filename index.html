@@ -5059,41 +5059,45 @@
   function updateTLDropdown(squad) {
     const countrySel = document.getElementById(squad === 'support' ? "support-country-filter" : "cc-country-filter").value;
     const tlSelect = document.getElementById(squad === 'support' ? "support-tl-filter" : "cc-tl-filter");
-    
+
     if (!tlSelect) return;
-    
+
     const rows = squad === 'support' ? rawData.support : rawData.customerCare;
     const tls = new Set();
-    
+
     if (rows) {
       rows.forEach(row => {
         const rowCountry = row['Assigned COuntry'];
         const tl = getRowTeamLeader(row, squad === 'support' ? 'TL Support Default' : 'TL CC Default');
-        
+
+        // Skip the generic "TL" placeholder — only real TL names should appear in the filter.
+        const tlTrimmed = (tl || '').trim();
+        if (!tlTrimmed || tlTrimmed.toLowerCase() === 'tl' || tlTrimmed === 'TL CC Default' || tlTrimmed === 'TL Support Default') return;
+
         // If a country is selected, filter TLs by country. Otherwise, show all TLs of that department.
         if (!countrySel) {
-          if (tl) tls.add(tl);
+          tls.add(tlTrimmed);
         } else if (rowCountry) {
           const rowCountryData = getCountryData(rowCountry);
           if (normalizeString(rowCountryData.name) === countrySel) {
-            if (tl) tls.add(tl);
+            tls.add(tlTrimmed);
           }
         }
       });
     }
-    
+
     const currentTL = tlSelect.value;
-    
+
     tlSelect.innerHTML = '<option value="">All Team Leaders</option>';
     tls.forEach(tl => {
       tlSelect.innerHTML += `<option value="${tl}">${tl}</option>`;
     });
-    
+
     // Restore previous selection if it still exists in the list
     if (tls.has(currentTL)) {
       tlSelect.value = currentTL;
     }
-    
+
     tlSelect.disabled = false; // Siempre habilitado
   }
 
@@ -5249,8 +5253,9 @@
         const fcrStatus = !isNaN(valFCR) ? (okFCR ? '<span class="status-pill ok">FCR: 🏆</span>' : '<span class="status-pill running">FCR: ⚽</span>') : '';
         const csatStatus = !isNaN(valCSAT) ? (okCSAT ? '<span class="status-pill ok">CSAT: 🏆</span>' : '<span class="status-pill running">CSAT: ⚽</span>') : '';
         
+        const tlDisplayFCR = (rowTL && rowTL !== 'TL' && rowTL !== 'TL Support Default') ? rowTL : 'Sin asignar';
         tbody.innerHTML += `<tr>
-          <td><span class="agent-name">${agent} <span style="font-size:11px; color:var(--muted); font-weight:normal;">(${rowTL})</span></span></td>
+          <td><span class="agent-name">${agent} <span style="font-size:11px; color:var(--muted); font-weight:normal;">(${tlDisplayFCR})</span></span></td>
           <td><span style="font-weight: 700; color: var(--ink);">FCR: ${fcrText} <br> CSAT: ${csatText}</span></td>
           <td><div style="display:flex; flex-direction:column; gap:4px;">${fcrStatus} ${csatStatus}</div></td>
           <td>
@@ -5274,8 +5279,9 @@
         
         const scoreText = !isNaN(val) ? `${val.toFixed(1)}${unit}` : '—';
         
+        const tlDisplaySingle = (rowTL && rowTL !== 'TL' && rowTL !== 'TL Support Default') ? rowTL : 'Sin asignar';
         tbody.innerHTML += `<tr>
-          <td><span class="agent-name">${agent} <span style="font-size:11px; color:var(--muted); font-weight:normal;">(${rowTL})</span></span></td>
+          <td><span class="agent-name">${agent} <span style="font-size:11px; color:var(--muted); font-weight:normal;">(${tlDisplaySingle})</span></span></td>
           <td><span class="score-num">${scoreText}</span></td>
           <td><span class="status-pill ${ok ? 'ok' : 'running'}">${ok ? '🏆 Target Achieved' : '⚽ In Competition'}</span></td>
           <td><span class="contrib-num">${contrib.toFixed(1)}%</span> <span class="contrib-of">/ ${weightPct}</span></td>
@@ -5542,9 +5548,10 @@
 
       const ok = !isNaN(val) && val >= (targetThreshold * rowCount);
       const scoreText = !isNaN(val) ? `${val.toFixed(1)}${unit}` : '—';
-      
+      const tlDisplayCC = (rowTL && rowTL !== 'TL' && rowTL !== 'TL CC Default') ? rowTL : 'Sin asignar';
+
       tbody.innerHTML += `<tr>
-        <td><span class="agent-name">${analyst} <span style="font-size:11px; color:var(--muted); font-weight:normal;">(${rowTL})</span></span></td>
+        <td><span class="agent-name">${analyst} <span style="font-size:11px; color:var(--muted); font-weight:normal;">(${tlDisplayCC})</span></span></td>
         <td><span class="score-num">${scoreText}</span></td>
         <td><span class="status-pill ${ok ? 'ok' : 'running'}">${ok ? '🏆 Target Achieved' : '⚽ In Competition'}</span></td>
         <td><span class="contrib-num">${contrib.toFixed(1)}%</span> <span class="contrib-of">/ ${weightPct}</span></td>
