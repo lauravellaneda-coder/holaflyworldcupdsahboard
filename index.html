@@ -5231,17 +5231,24 @@
         perfText = t.perfDisplay.val.toFixed(1) + t.perfDisplay.unit;
       }
 
-      // Build per-team tooltip
-      let goalTooltip = '';
-      if (t.weeklyPerformances && t.weeklyPerformances.length > 0) {
-        goalTooltip = t.weeklyPerformances.map(w => {
+      // Store per-team weekly data so the detail modal can render it
+      if (!window.__weeklyDetailTeams) window.__weeklyDetailTeams = {};
+      window.__weeklyDetailTeams[t.key] = {
+        country: t.country,
+        flag: t.flag,
+        dept: t.dept,
+        points: t.points,
+        goals: t.goals,
+        weekly: (t.weeklyPerformances || []).map(w => {
           const goalEntry = t.goalHistory ? t.goalHistory.find(h => h.week === w.week) : null;
-          if (goalEntry) {
-            return `Week ${w.week}: ${w.val.toFixed(1)}% → +${goalEntry.goals} goals`;
-          }
-          return `Week ${w.week}: ${w.val.toFixed(1)}%`;
-        }).join('<br>');
-      }
+          return {
+            week: w.week,
+            val: w.val,
+            display: w.display,
+            goals: goalEntry ? goalEntry.goals : 0
+          };
+        })
+      };
       
       tbody.innerHTML += `<tr>
         <td><div class="rank-wrap ${rankCls}">${medal}</div></td>
@@ -5260,10 +5267,7 @@
         <td><span style="font-weight: 700; color: var(--gold);">🏆 ${t.points} Pts</span></td>
         <td style="position: relative; overflow: visible;">
           <span class="goals-chip ${chipCls}">⚽ ${t.goals} Goals</span>
-          ${goalTooltip ? `<span class="tooltip-wrap" style="cursor: pointer; margin-left: 6px; display: inline-flex; align-items: center;">
-            i
-            <span class="info-tooltip-content tooltip-right" style="width: 260px;">${goalTooltip}</span>
-          </span>` : ''}
+          ${(t.weeklyPerformances && t.weeklyPerformances.length > 0) ? `<button onclick="openWeeklyDetailModal('${t.key.replace(/'/g, "\\'")}')" title="View weekly breakdown" style="background: transparent; border: 1.5px solid var(--line); border-radius: 20px; color: var(--muted); font-size: 11px; font-weight: 800; padding: 4px 10px; margin-left: 6px; cursor: pointer; font-family: inherit; transition: all 0.15s;" onmouseover="this.style.borderColor='var(--coral)';this.style.color='var(--coral)'" onmouseout="this.style.borderColor='var(--line)';this.style.color='var(--muted)'">📅 Weeks</button>` : ''}
         </td>
       </tr>`;
     });
@@ -5276,6 +5280,69 @@
   async function renderGeneralStanding() {
     await updateWeeklyStandingsAndRender();
   }
+
+  function openWeeklyDetailModal(teamKey) {
+    const overlay = document.getElementById('weekly-detail-modal-overlay');
+    if (!overlay) return;
+    document.getElementById('weekly-detail-title').textContent = 'Loading…';
+    document.getElementById('weekly-detail-sub').textContent = '';
+    document.getElementById('weekly-detail-empty').style.display = 'none';
+    document.getElementById('weekly-detail-rows').innerHTML =
+      '<tr><td colspan="3" style="padding: 30px 10px; text-align: center; color: var(--muted2); font-size: 13.5px;">' +
+      '<div style="display: inline-block; width: 26px; height: 26px; border: 3px solid rgba(230,67,92,0.15); border-top-color: var(--coral); border-radius: 50%; animation: spin 0.9s linear infinite; vertical-align: middle; margin-right: 10px;"></div>' +
+      'Loading weekly breakdown…</td></tr>';
+    overlay.style.display = 'flex';
+    // Lazy load: let the loading state paint first, then render the content.
+    setTimeout(function() { renderWeeklyDetailContent(teamKey, 0); }, 60);
+  }
+
+  function renderWeeklyDetailContent(teamKey, attempt) {
+    const overlay = document.getElementById('weekly-detail-modal-overlay');
+    if (!overlay || overlay.style.display === 'none') return;
+    const data = window.__weeklyDetailTeams ? window.__weeklyDetailTeams[teamKey] : null;
+    if (!data || !data.weekly || data.weekly.length === 0) {
+      // Data may still be computing (render in flight) — retry once after a delay.
+      if (attempt < 3) {
+        setTimeout(function() { renderWeeklyDetailContent(teamKey, attempt + 1); }, 500);
+        return;
+      }
+      document.getElementById('weekly-detail-title').textContent = teamKey;
+      document.getElementById('weekly-detail-sub').textContent = 'No weekly data available.';
+      document.getElementById('weekly-detail-rows').innerHTML = '';
+      document.getElementById('weekly-detail-empty').style.display = 'block';
+      return;
+    }
+    document.getElementById('weekly-detail-title').textContent = `${data.flag} ${data.country} · ${data.dept}`;
+    document.getElementById('weekly-detail-sub').innerHTML = `🏆 <strong style="color: var(--gold);">${data.points} Pts</strong> &nbsp;·&nbsp; ⚽ <strong style="color: var(--coral);">${data.goals} Goals</strong> &nbsp;·&nbsp; ${data.weekly.length} week${data.weekly.length !== 1 ? 's' : ''}`;
+    const rowsHtml = data.weekly.map(w => {
+      const displayText = w.display && w.display.displayString ? w.display.displayString : w.val.toFixed(1) + '%';
+      const pointsText = w.goals > 0 ? `<span style="color: var(--green); font-weight: 800;">+${w.goals} ⚽</span>` : `<span style="color: var(--muted2);">0</span>`;
+      const isLocked = w.goals > 0;
+      return `<tr style="border-bottom: 1px solid rgba(232, 236, 242, 0.08);">
+        <td style="padding: 10px; font-weight: 700; color: #ffffff;">📅 ${w.week}</td>
+        <td style="padding: 10px; text-align: right; color: rgba(255,255,255,.85);">${displayText}</td>
+        <td style="padding: 10px; text-align: right;">${pointsText}${!isLocked ? ' <span style="font-size: 11px; color: var(--muted2);">(locked)</span>' : ''}</td>
+      </tr>`;
+    }).join('');
+    document.getElementById('weekly-detail-rows').innerHTML = rowsHtml;
+    document.getElementById('weekly-detail-empty').style.display = 'none';
+  }
+
+  function closeWeeklyDetailModal() {
+    const overlay = document.getElementById('weekly-detail-modal-overlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  // Close weekly detail modal on overlay click (outside the card) and on Escape
+  document.addEventListener('click', function(e) {
+    const overlay = document.getElementById('weekly-detail-modal-overlay');
+    if (overlay && overlay.style.display === 'flex' && e.target === overlay) {
+      closeWeeklyDetailModal();
+    }
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeWeeklyDetailModal();
+  });
 
   function populateCountryDropdowns() {
     let sS = document.getElementById("support-country-filter");
@@ -6582,6 +6649,30 @@
       Information is flying like Holafly ✈️ <br>
       <span style="font-size: 13px; color: #ff5a5f; font-weight: 600; opacity: 0.9; display: inline-block; margin-top: 8px;">Sorry for the delay</span>
     </p>
+  </div>
+</div>
+
+<!-- Weekly Points Detail Modal (centered, dashboard style) -->
+<div id="weekly-detail-modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(17, 22, 37, 0.75); backdrop-filter: blur(5px); z-index: 11500; align-items: center; justify-content: center; font-family: 'Mulish', sans-serif;">
+  <div style="position: relative; background: rgba(22, 28, 45, 0.98); border: 2px solid var(--coral-mid); border-radius: var(--r-lg); padding: 28px 30px; max-width: 560px; width: 92%; max-height: 85vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); color: #ffffff; animation: fadeUp 0.2s ease;">
+    <button onclick="closeWeeklyDetailModal()" style="position: absolute; top: 12px; right: 16px; background: transparent; border: none; color: var(--muted2); font-size: 24px; line-height: 1; cursor: pointer; font-family: inherit;">×</button>
+    <div style="font-size: 11px; font-weight: 800; letter-spacing: 2.5px; text-transform: uppercase; color: var(--coral); margin-bottom: 8px;">Weekly Breakdown</div>
+    <h4 id="weekly-detail-title" style="font-weight: 900; font-size: 20px; margin-bottom: 4px; letter-spacing: -0.3px;">—</h4>
+    <div id="weekly-detail-sub" style="font-size: 13px; color: var(--muted2); margin-bottom: 20px;">—</div>
+    <table style="width: 100%; border-collapse: collapse; font-size: 13.5px;">
+      <thead>
+        <tr style="border-bottom: 1px solid rgba(232, 236, 242, 0.15);">
+          <th style="text-align: left; padding: 8px 10px; font-size: 11px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted2);">Week</th>
+          <th style="text-align: right; padding: 8px 10px; font-size: 11px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted2);">Performance</th>
+          <th style="text-align: right; padding: 8px 10px; font-size: 11px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted2);">Points</th>
+        </tr>
+      </thead>
+      <tbody id="weekly-detail-rows"><!-- populated by JS --></tbody>
+    </table>
+    <div id="weekly-detail-empty" style="display: none; text-align: center; padding: 24px 0; color: var(--muted2); font-size: 13.5px;">No weekly data available for this squad.</div>
+    <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px;">
+      <button onclick="closeWeeklyDetailModal()" class="editor-btn secondary" style="height: 36px; padding: 0 18px;">Close</button>
+    </div>
   </div>
 </div>
 
