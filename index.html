@@ -6583,15 +6583,33 @@
 </div>
 
 <!-- ═══════ STANDALONE AUTH SCREEN ═══════ -->
-<div id="auth-screen" style="position:fixed; inset:0; background: linear-gradient(135deg, #1a1d23 0%, #2d3140 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; z-index:99999; color:#fff;">
-  <h1 style="font-size:42px; font-weight:900; margin-bottom:12px; letter-spacing:-0.02em;">
-    🏆 <span style="color:#f59e0b;">Holafly</span> World Cup 2026
-  </h1>
-  <p style="font-size:16px; opacity:0.8; max-width:520px; text-align:center; margin-bottom:32px;">
-    Tournament dashboard for Holafly teams.<br>Sign in with your Holafly Google account to continue.
-  </p>
-  <div style="background:rgba(255,255,255,0.06); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:32px; max-width:480px; width:100%;">
-    <button id="standalone-auth-btn" style="background:#fff; color:#1a1d23; border:none; border-radius:8px; padding:14px 24px; font-family:inherit; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:12px; width:100%; transition:transform 0.15s;">
+<div id="auth-screen" style="position:fixed; inset:0; background: var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; z-index:99999; color:var(--ink2);">
+  <!-- Hero card con la identidad visual del dashboard (.hero-banner) -->
+  <div style="position:relative; width:100%; max-width:520px; background:var(--ink); border-radius:var(--r-lg); padding:44px 44px 36px; overflow:hidden; text-align:center; box-shadow:0 25px 50px -12px rgba(17,22,37,0.4);">
+    <!-- Franja diagonal coral decorativa (igual que .hero-banner::after) -->
+    <div style="position:absolute; right:0; top:0; bottom:0; width:220px; background:linear-gradient(135deg, transparent 40%, rgba(230,67,92,0.18) 100%); pointer-events:none;"></div>
+
+    <!-- Logo Holafly (coral, igual al del header) -->
+    <img src="https://media.holafly.com/public/logos/holafly.svg" alt="Holafly" style="height:32px; width:auto; position:relative; z-index:2; margin-bottom:22px;">
+
+    <!-- Copa del torneo (igual que .hero-img) -->
+    <img src="https://lh3.googleusercontent.com/d/1Xp1zeYmHK8ayzLOzxTLGChBcmqnCX0Hx" alt="World Cup Trophy" style="width:96px; height:96px; object-fit:contain; position:relative; z-index:2; margin-bottom:12px;">
+
+    <!-- Label estilo .hero-label -->
+    <div style="font-size:11px; font-weight:800; letter-spacing:2.5px; text-transform:uppercase; color:var(--coral); margin-bottom:10px; position:relative; z-index:2;">Tournament · All Squads</div>
+
+    <!-- Heading estilo .hero-heading -->
+    <h1 style="font-weight:900; font-size:1.75rem; color:#ffffff; line-height:1.15; margin-bottom:12px; letter-spacing:-0.5px; position:relative; z-index:2;">
+      Holafly World Cup <span style="color:var(--amber);">2026</span>
+    </h1>
+
+    <!-- Sub estilo .hero-sub -->
+    <p style="font-size:13.5px; color:rgba(255,255,255,.5); line-height:1.65; max-width:380px; margin:0 auto 28px; position:relative; z-index:2;">
+      Sign in with your <strong style="color:rgba(255,255,255,.85); font-weight:700;">Holafly Google account</strong> to enter the tournament dashboard.
+    </p>
+
+    <!-- Boton primario coral (igual que los CTAs del dashboard) -->
+    <button id="standalone-auth-btn" style="background:var(--coral); color:#fff; border:none; border-radius:var(--r); padding:14px 24px; font-family:'Mulish', 'Twemoji Country Flags', sans-serif; font-size:15px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:12px; width:100%; position:relative; z-index:2; transition:background 0.15s, transform 0.15s; box-shadow:0 10px 15px -3px rgba(230,67,92,0.35);" onmouseover="this.style.background='var(--coral-hover)'" onmouseout="this.style.background='var(--coral)'">
       <svg width="20" height="20" viewBox="0 0 24 24">
         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
         <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -6600,9 +6618,10 @@
       </svg>
       <span id="standalone-auth-btn-text">Sign in with Google</span>
     </button>
-    <div id="auth-status" style="margin-top:16px; font-size:13px; text-align:center; opacity:0.7; min-height:18px;">Initializing...</div>
+    <div id="auth-status" style="margin-top:16px; font-size:13px; text-align:center; color:rgba(255,255,255,.7); min-height:18px; position:relative; z-index:2;">Initializing...</div>
   </div>
-  <p style="margin-top:24px; font-size:12px; opacity:0.6; max-width:480px; text-align:center;">
+
+  <p style="margin-top:24px; font-size:12px; color:var(--muted); max-width:480px; text-align:center;">
     🔒 Read-only access to the Holafly World Cup spreadsheet. The dashboard cannot modify any data.
   </p>
 </div>
