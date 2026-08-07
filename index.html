@@ -2402,11 +2402,11 @@
       }
 
       if (isCC) {
-        // PP from PP Metrics tab (new) + Suma_Total_Productivas from CC sheet (old fallback)
-        const ppFromMetrics = ppByEmail[email] || 0;
+        // PP from PP Metrics tab is the source of truth — DO NOT sum with CC sheet's
+        // Suma_Total_Productivas, otherwise agents show double their actual PP
+        // (e.g. Mauricio would show 1398.75 + 936.35 = 2335.1 instead of 1398.75).
+        const totalPP = ppByEmail[email] || 0;
         const ccKpis = ccKpisMap[email];
-        const ppFromSheet = ccKpis && ccKpis.pps.length > 0 ? ccKpis.pps.reduce((a,b)=>a+b, 0) : 0;
-        const totalPP = ppFromMetrics + ppFromSheet;
         const avgQA = ccKpis && ccKpis.qas.length > 0 ? ccKpis.qas.reduce((a,b)=>a+b, 0) / ccKpis.qas.length : 0;
         customerCare.push({
           'Assigned COuntry': country,
