@@ -1839,13 +1839,11 @@
   function showAuthScreen() {
     const screen = document.getElementById('auth-screen');
     if (screen) screen.style.display = 'flex';
-    document.getElementById('app').style.display = 'none';
   }
 
   function showApp() {
     const screen = document.getElementById('auth-screen');
     if (screen) screen.style.display = 'none';
-    document.getElementById('app').style.display = 'block';
     if (userEmail) {
       const emailEl = document.getElementById('user-email');
       if (emailEl) emailEl.textContent = userEmail;
@@ -1871,9 +1869,15 @@
         });
         if (res.ok) {
           const info = await res.json();
-          userEmail = info.email || 'user@holafly.com';
+          userEmail = info.email || 'Holafly User';
+        } else {
+          console.warn('[standalone-auth] userinfo returned ' + res.status + ' — continuing without email');
+          userEmail = 'Holafly User';
         }
-      } catch (e) { /* ignore */ }
+      } catch (e) {
+        console.warn('[standalone-auth] userinfo fetch failed:', e);
+        userEmail = 'Holafly User';
+      }
       showApp();
       // Set default dates and load
       setDefaultDateRange();
