@@ -1960,12 +1960,24 @@
   function parseDateLoose(s) {
     if (!s) return null;
     const str = s.toString().trim();
+    // ISO format: YYYY-MM-DD or YYYY/MM/DD
     let m = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
     if (m) return new Date(+m[1], +m[2]-1, +m[3]);
+    // Two-component format: detect DMY vs MDY heuristically.
+    // PP Metrics tab uses MM/DD/YYYY (e.g. "07/28/2026" = July 28).
+    // If first component > 12 → unambiguously a day → DD/MM/YYYY.
+    // If second component > 12 → unambiguously a month → MM/DD/YYYY.
+    // If both ≤ 12 → ambiguous; default to MDY to match the verified PP Metrics data.
     m = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
     if (m) {
       let y = +m[3]; if (y < 100) y += 2000;
-      return new Date(y, +m[2]-1, +m[1]);
+      const a = +m[1], b = +m[2];
+      let month, day;
+      if (a > 12) { month = b; day = a; }       // unambiguously DD/MM
+      else if (b > 12) { month = a; day = b; }  // unambiguously MM/DD
+      else { month = a; day = b; }              // ambiguous → default MDY (matches PP Metrics)
+      const dt = new Date(y, month - 1, day);
+      return isNaN(dt.getTime()) ? null : dt;
     }
     const d = new Date(str);
     return isNaN(d.getTime()) ? null : d;
@@ -2093,6 +2105,11 @@
     });
     let ppMetricsFiltered = ppMetricsRaw.filter(r => {
       const date = getRowValueByKey(r, ['date', 'Date', 'Fecha', 'fecha']);
+      // PP Metrics tab includes historical 2025 data we want to ignore.
+      // Hard floor: only include rows >= 2026-06-15 (tournament start).
+      const PP_FLOOR = '2026-06-15';
+      const dParsed = parseDateLoose(date);
+      if (dParsed && dParsed < parseDateLoose(PP_FLOOR)) return false;
       return isDateInRange(date, startDate, endDate);
     });
 
@@ -2141,6 +2158,51 @@
       const nk = normalizeString(k);
       for (const pk of possibleKeys) {
         if (nk === normalizeString(pk)) return row[k];
+      }
+    }
+    return '';
+  }
+
+  // ── Helpers ported from code.gs: getRowEmail, getRowAgentName, getRowCountry ──
+  // Needed in standalone HTML (code.gs doesn't run on GitHub Pages).
+  function getRowEmail(row) {
+    if (!row) return '';
+    const keys = Object.keys(row);
+    for (let i = 0; i < keys.length; i++) {
+      const keyNorm = normalizeString(keys[i]);
+      if (keyNorm.indexOf('email') !== -1 || keyNorm.indexOf('correo') !== -1 || keyNorm === 'usuario') {
+        const val = normalizeString(row[keys[i]]);
+        if (val.indexOf('@') !== -1) return val;
+      }
+    }
+    return '';
+  }
+
+  function getRowAgentName(row) {
+    if (!row) return '';
+    const keys = Object.keys(row);
+    const specificKeys = ['agent name', 'agentname', 'nombre agente', 'nombre del agente', 'analyst name', 'analystname', 'nombre analista', 'identifier', 'name', 'nombre', 'analyst', 'analista'];
+    for (let i = 0; i < specificKeys.length; i++) {
+      for (let j = 0; j < keys.length; j++) {
+        if (normalizeString(keys[j]) === specificKeys[i]) return row[keys[j]];
+      }
+    }
+    for (let j = 0; j < keys.length; j++) {
+      const keyNorm = normalizeString(keys[j]);
+      if (keyNorm.indexOf('name') !== -1 || keyNorm.indexOf('nombre') !== -1 || keyNorm.indexOf('agente') !== -1 || keyNorm.indexOf('analyst') !== -1 || keyNorm.indexOf('analista') !== -1) {
+        return row[keys[j]];
+      }
+    }
+    return '';
+  }
+
+  function getRowCountry(row) {
+    if (!row) return '';
+    const keys = Object.keys(row);
+    for (let i = 0; i < keys.length; i++) {
+      const keyNorm = normalizeString(keys[i]);
+      if (keyNorm.indexOf('country') !== -1 || keyNorm.indexOf('pais') !== -1 || keyNorm.indexOf('nacion') !== -1) {
+        return row[keys[i]];
       }
     }
     return '';
