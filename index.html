@@ -2452,11 +2452,14 @@
       const email = getRowEmail(r);
       if (!email) return;
       const name = getRowAgentName(r) || "Unknown Agent";
-      const country = getRowCountry(r) || "Unknown";
+      const country = getRowCountry(r);
       const tl = getRowTeamLeader(r);
       // Defensive: if an agent has no real TL in registration, exclude them
       // from the dashboard rather than paint a "TL" placeholder.
       if (!tl || !tl.trim() || tl === 'TL') return;
+      // Agents without a country cannot belong to any team — exclude them
+      // instead of creating an "Unknown" team.
+      if (!country) return;
 
       let isCC = false;
       const tlNorm = normalizeString(tl);
@@ -4765,9 +4768,13 @@
             const avgAHT = s.aht_conversations > 0 ? s.aht_seconds_total / s.aht_conversations : 0;
             const csat = s.csat_surveys > 0 ? s.csat_promoters / s.csat_surveys : 0;
             const reg = registration.find(rr => (getRowEmail(rr) || '').toLowerCase() === email);
-            const country = reg ? (getRowCountry(reg) || 'Unknown') : 'Unknown';
-            const tl = reg ? (getRowTeamLeader(reg) || 'TL') : 'TL';
-            const name = reg ? (getRowAgentName(reg) || email) : email;
+            // Only registered agents appear on the dashboard: unregistered KPIs
+            // (or registered agents without a country) must NOT become "Unknown" teams.
+            if (!reg) return;
+            const country = getRowCountry(reg);
+            if (!country) return;
+            const tl = getRowTeamLeader(reg);
+            const name = getRowAgentName(reg) || email;
             weeklySupport.push({
               'Assigned COuntry': country,
               'Department': 'Support',
@@ -4786,9 +4793,12 @@
             const totalPP = ppByEmail[email] || 0;
             const avgQA = c.qas.length ? c.qas.reduce((a,b)=>a+b,0) / c.qas.length : 0;
             const reg = registration.find(rr => (getRowEmail(rr) || '').toLowerCase() === email);
-            const country = reg ? (getRowCountry(reg) || 'Unknown') : 'Unknown';
-            const tl = reg ? (getRowTeamLeader(reg) || 'TL') : 'TL';
-            const name = reg ? (getRowAgentName(reg) || email) : email;
+            // Only registered agents appear on the dashboard (no "Unknown" teams).
+            if (!reg) return;
+            const country = getRowCountry(reg);
+            if (!country) return;
+            const tl = getRowTeamLeader(reg);
+            const name = getRowAgentName(reg) || email;
             weeklyCustomerCare.push({
               'Assigned COuntry': country,
               'Department': 'Customer Care',
@@ -4804,9 +4814,9 @@
           registration.forEach(reg => {
             const email = (getRowEmail(reg) || '').toLowerCase();
             if (!email) return;
-            const country = getRowCountry(reg) || 'Unknown';
+            const country = getRowCountry(reg);
             const tl = getRowTeamLeader(reg);
-            if (!tl) return;
+            if (!country || !tl) return;
             const name = getRowAgentName(reg) || email;
             const regRow = { 'Assigned COuntry': country, 'Identifier': name, 'Email': email, 'Team Leader': tl };
             if (!supportEmails[email] && !ccEmails[email] && ppByEmail[email]) {
