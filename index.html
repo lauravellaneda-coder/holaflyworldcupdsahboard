@@ -2516,8 +2516,14 @@
       const tl = getRowTeamLeader(r);
       const country = getRowCountry(r);
       const pts = parseFloat(getRowValueByKey(r, ['points', 'Points', 'puntos', 'Puntos']) || 0);
-      if (!tl || !country || isNaN(pts)) return;
-      const dept = tlDeptMap[normalizeString(tl)] || 'Support';
+      if (!country || isNaN(pts)) return;
+      let dept = 'Support';
+      if (tl) {
+        dept = tlDeptMap[normalizeString(tl)] || 'Support';
+      } else {
+        const deptVal = getRowValueByKey(r, ['Department', 'Departamento', 'Squad', 'Equipo']);
+        if (deptVal && deptVal.toLowerCase().indexOf('care') !== -1) dept = 'Customer Care';
+      }
       const key = country + '_' + dept;
       pointsByTeam[key] = (pointsByTeam[key] || 0) + pts;
     });
