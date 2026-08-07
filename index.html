@@ -1986,6 +1986,7 @@
   // Fetch all sheets in parallel and build rosters
   async function fetchStandaloneData(startDate, endDate) {
     console.log('[standalone-data] Fetching 5 sheets from spreadsheet', SPREADSHEET_ID);
+    console.log('[standalone-data] Date range:', startDate, 'to', endDate);
     const [regValues, supportValues, ccValues, pCountryValues, metricsValues] = await Promise.all([
       fetchSheetValues(SHEET_REGISTRATION + '!A:Z'),
       fetchSheetValues(SHEET_SUPPORT + '!A:Z'),
@@ -1993,13 +1994,25 @@
       fetchSheetValues(SHEET_PCOUNTRY + '!A:Z'),
       fetchSheetValues(SHEET_METRICS + '!A:Z'),
     ]);
-    console.log('[standalone-data] Raw row counts:', {
+    const counts = {
       registration: (regValues || []).length,
       support: (supportValues || []).length,
       customerCare: (ccValues || []).length,
       pCountry: (pCountryValues || []).length,
       metrics: (metricsValues || []).length
-    });
+    };
+    console.log('[standalone-data] Raw row counts (incl header):', JSON.stringify(counts));
+    if (supportValues && supportValues[0]) {
+      console.log('[standalone-data] Support sheet headers:', JSON.stringify(supportValues[0]));
+      console.log('[standalone-data] Support sample row:', JSON.stringify(supportValues[1] || {}));
+    }
+    if (ccValues && ccValues[0]) {
+      console.log('[standalone-data] CC sheet headers:', JSON.stringify(ccValues[0]));
+      console.log('[standalone-data] CC sample row:', JSON.stringify(ccValues[1] || {}));
+    }
+    if (regValues && regValues[0]) {
+      console.log('[standalone-data] Registration sample row:', JSON.stringify(regValues[1] || {}));
+    }
 
     const registration = rowsToObjects(regValues);
     const supportRaw = rowsToObjects(supportValues);
@@ -2007,15 +2020,56 @@
     const pCountry = rowsToObjects(pCountryValues);
     const metrics = rowsToObjects(metricsValues);
 
+    console.log('[standalone-data] After rowsToObjects:', JSON.stringify({
+      registration: registration.length,
+      support: supportRaw.length,
+      cc: ccRaw.length,
+      pCountry: pCountry.length,
+      metrics: metrics.length
+    }));
+
     // Filter by date range
-    const supportFiltered = supportRaw.filter(r => {
+    let supportFiltered = supportRaw.filter(r => {
       const date = getRowValueByKey(r, ['date_bog', 'Date', 'Fecha', 'date']);
       return isDateInRange(date, startDate, endDate);
     });
-    const ccFiltered = ccRaw.filter(r => {
+    let ccFiltered = ccRaw.filter(r => {
       const date = getRowValueByKey(r, ['Date', 'date', 'Fecha']);
       return isDateInRange(date, startDate, endDate);
     });
+
+    console.log('[standalone-data] After date filter:', JSON.stringify({
+      supportIn: supportRaw.length, supportOut: supportFiltered.length,
+      ccIn: ccRaw.length, ccOut: ccFiltered.length,
+      dateRange: startDate + ' → ' + endDate
+    }));
+
+    // FALLBACK: if date filter excluded everything (timezone/format mismatch),
+    // try again with a wider window (last 180 days) so users still see data
+    if (supportRaw.length > 0 && supportFiltered.length === 0) {
+      console.warn('[standalone-data] Date filter excluded all support rows. Falling back to last 180 days.');
+      const fallbackEnd = new Date();
+      const fallbackStart = new Date();
+      fallbackStart.setDate(fallbackStart.getDate() - 180);
+      const fmt = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      supportFiltered = supportRaw.filter(r => {
+        const date = getRowValueByKey(r, ['date_bog', 'Date', 'Fecha', 'date']);
+        return isDateInRange(date, fmt(fallbackStart), fmt(fallbackEnd));
+      });
+      console.log('[standalone-data] Support fallback (180d) count:', supportFiltered.length);
+    }
+    if (ccRaw.length > 0 && ccFiltered.length === 0) {
+      console.warn('[standalone-data] Date filter excluded all CC rows. Falling back to last 180 days.');
+      const fallbackEnd = new Date();
+      const fallbackStart = new Date();
+      fallbackStart.setDate(fallbackStart.getDate() - 180);
+      const fmt = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      ccFiltered = ccRaw.filter(r => {
+        const date = getRowValueByKey(r, ['Date', 'date', 'Fecha']);
+        return isDateInRange(date, fmt(fallbackStart), fmt(fallbackEnd));
+      });
+      console.log('[standalone-data] CC fallback (180d) count:', ccFiltered.length);
+    }
 
     // Build the same shape the original code expects
     return buildStandaloneRosters(registration, supportFiltered, ccFiltered, pCountry, metrics);
