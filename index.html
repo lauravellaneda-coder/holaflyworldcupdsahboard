@@ -2349,7 +2349,11 @@
     });
     console.log('[standalone-data] PP metrics aggregated:', JSON.stringify({
       uniqueEmails: Object.keys(ppByEmail).length,
-      sample: Object.entries(ppByEmail).slice(0, 3)
+      sample: Object.entries(ppByEmail).slice(0, 3),
+      mauricio: ppByEmail['mauricio.salas@holafly.com'] || 0,
+      derian: ppByEmail['derian.angulo@holafly.com'] || 0,
+      stiven: ppByEmail['stiven.rojas@holafly.com'] || 0,
+      ppByEmailFull: ppByEmail
     }));
 
     // ── Aggregate CC metrics by email (mirrors code (22).gs lines 332-359) ──
