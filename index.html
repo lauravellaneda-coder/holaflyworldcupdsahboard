@@ -2035,6 +2035,23 @@
     return true;
   }
 
+  // Same as isDateInRange but uses the MDY parser for PP Metrics dates.
+  // Without this, ambiguous dates like "07/01/2026" get parsed as January 7
+  // by the default DMY parser and get falsely excluded from the 6/15-8/2 range.
+  function isDateInRangeMDY(dateStr, startStr, endStr) {
+    const d = parseDateLooseMDY(dateStr);
+    if (!d) return true;
+    if (startStr) {
+      const s = parseDateLooseMDY(startStr);
+      if (s && d < new Date(s.getFullYear(), s.getMonth(), s.getDate())) return false;
+    }
+    if (endStr) {
+      const e = parseDateLooseMDY(endStr);
+      if (e && d > new Date(e.getFullYear(), e.getMonth(), e.getDate())) return false;
+    }
+    return true;
+  }
+
   // Fetch all sheets in parallel and build rosters
   // Safe fetch: returns [] on error so one bad sheet doesn't break the whole flow
   async function safeFetchSheet(sheetName, label) {
@@ -2162,11 +2179,12 @@
       const date = getRowValueByKey(r, ['date', 'Date', 'Fecha', 'fecha']);
       // PP Metrics tab includes historical 2025 data we want to ignore.
       // Hard floor: only include rows >= 2026-06-15 (tournament start).
-      // PP Metrics uses MM/DD/YYYY (use MDY-specific parser).
+      // PP Metrics uses MM/DD/YYYY — use MDY-specific parsers throughout.
       const PP_FLOOR = '2026-06-15';
       const dParsed = parseDateLooseMDY(date);
-      if (dParsed && dParsed < parseDateLooseMDY(PP_FLOOR)) return false;
-      return isDateInRange(date, startDate, endDate);
+      if (!dParsed) return false;
+      if (dParsed < parseDateLooseMDY(PP_FLOOR)) return false;
+      return isDateInRangeMDY(date, startDate, endDate);
     });
 
     console.log('[standalone-data] After date filter:', JSON.stringify({
@@ -4640,10 +4658,11 @@
           const weekPP = rawCache.ppMetrics.filter(r => {
             const d = getRowValueByKey(r, ['date', 'Date', 'Fecha', 'fecha']);
             const PP_FLOOR = '2026-06-15';
-            // PP Metrics uses MM/DD/YYYY
+            // PP Metrics uses MM/DD/YYYY — use MDY-specific parsers throughout.
             const dParsed = parseDateLooseMDY(d);
-            if (dParsed && dParsed < parseDateLooseMDY(PP_FLOOR)) return false;
-            return isDateInRange(d, week.start, week.end);
+            if (!dParsed) return false;
+            if (dParsed < parseDateLooseMDY(PP_FLOOR)) return false;
+            return isDateInRangeMDY(d, week.start, week.end);
           });
           // Build the same roster shape the rest of the code expects
           const registration = rawCache.registration || [];
